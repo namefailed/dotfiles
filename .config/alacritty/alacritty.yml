@@ -1,0 +1,19 @@
+import:
+  - ~/.config/alacritty/themes/catppuccin-mocha.yml
+window:
+  padding:
+    x: 25
+    y: 1
+  opacity: .90
+  dynamic_title: false
+font:
+  normal:
+    family: Hack Nerd Font Mono
+    style: Regular
+  bold:
+    style: Bold
+  italic:
+    style: Italic
+  bold_italic:
+    style: Bold Italic
+  size: 13.0
