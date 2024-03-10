@@ -56,13 +56,13 @@ return {
         filtered_items = {
           visible = true,
           hide_dotfiles = false,
-          hide_gitignored = true,
+          hide_gitignored = false,
         },
       },
-    },
-    mappings = {
-      ["H"] = "<",
-      ["L"] = ">",
+      mappings = {
+        ["H"] = "prev_source",
+		    ["L"] = "next_source",
+      },
     },
   },
 }

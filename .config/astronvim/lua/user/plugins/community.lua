@@ -29,55 +29,28 @@ return {
       })
     end,
   },
-  -- { import = "astrocommunity.note-taking.neorg" },
-  -- {
-  --     "nvim-neorg/neorg",
-  --     build = ":Neorg sync-parsers",
-  --     lazy = false,
-  --     dependencies = { "nvim-lua/plenary.nvim" },
-  --     config = function()
-  --       require("neorg").setup {
-  --         load = {
-  --           ["core.defaults"] = {},
-  --           ["core.concealer"] = {},
-  --           ["core.dirman"] = {
-  --             config = {
-  --               workspaces = {
-  --                 notes = "~/notes",
-  --               },
-  --             },
-  --           },
-  --         },
-  --       }
-  --     end,
-  --   },
-  -- AI
-  { import = "astrocommunity.completion.copilot-lua" },
+  { import = "astrocommunity.note-taking.neorg" },
   {
-    "copilot.lua",
-    opts = {
-      panel = {
-        auto_refresh = true,
-        keymap = {
-          accept = "<C-l>",
-          jump_next = "<C-j>",
-          jump_prev = "<C-k>",
-          dismiss = "<C-h>",
-        },
-        layout = {
-          position = "right",
-        },
-      },
-      suggestion = {
-        keymap = {
-          accept = "<C-l>",
-          accept_word = false,
-          accept_line = false,
-          next = "<C-j>",
-          prev = "<C-k>",
-          dismiss = "<C-h>",
-        },
-      },
+      "nvim-neorg/neorg",
+      build = ":Neorg sync-parsers",
+      lazy = false,
+      dependencies = { "nvim-lua/plenary.nvim" },
+      config = function()
+        require("neorg").setup {
+          load = {
+            ["core.defaults"] = {},
+            ["core.concealer"] = {},
+            ["core.dirman"] = {
+              config = {
+                workspaces = {
+                  notes = "~/notes/neorg",
+                },
+              },
+            },
+          },
+        }
+      end,
     },
-  },
+  -- AI
+  { import = "astrocommunity.completion.copilot-lua-cmp" },
 }
