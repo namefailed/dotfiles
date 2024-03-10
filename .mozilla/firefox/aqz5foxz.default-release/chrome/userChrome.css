@@ -1,0 +1,16 @@
+/* Remove close button*/
+
+.titlebar-spacer[type="pre-tabs"],
+.titlebar-spacer[type="post-tabs"] {
+  border-inline-end: 0px solid white !important;
+  width: 5px !important;
+}
+
+tabs {
+  counter-reset: tab-counter;
+}
+
+.tab-label::before {
+  counter-increment: tab-counter;
+  content: counter(tab-counter) " - ";
+}
