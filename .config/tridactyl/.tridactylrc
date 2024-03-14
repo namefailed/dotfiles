@@ -1,0 +1,314 @@
+" General Settings
+set update.lastchecktime 1710397305651
+set update.nag true
+set update.nagwait 7
+set update.lastnaggedversion 1.14.0
+set update.checkintervalsecs 86400
+set configversion 2.0
+set theme midnight
+set smoothscroll false
+set hintuppercase true
+set hintfiltermode vimperator-reflow
+set hintdelay 100
+set editorcmd tdrop -ma -w 86% -h 86% -x 7% -y 7% -n tdrop --class="firefox" alacritty --title="firefox" -e nvim
+set newtab about:blank
+set allowautofocus true
+set hintshift true
+set modeindicatorshowkeys true
+set jumpdelay 1500
+set incsearch true
+set leavegithubalone true
+set scrollduration 100
+set hintautoselect false
+
+" Binds
+bind d scrollpage 0.25
+bind x tabclose
+bind J back
+bind K forward
+bind H tabprev
+bind L tabnext
+bind ;x hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y + "; xdotool click 1")}
+bind ;X hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y + "; xdotool keydown ctrl+shift; xdotool click 1; xdotool keyup ctrl+shift")}
+bind <A-p> pin
+bind <A-m> mute toggle
+bind <F1> help
+bind o fillcmdline open
+bind w fillcmdline winopen
+bind W current_url winopen
+unbind t
+bind ]] followpage next
+bind [[ followpage prev
+bind [c urlincrement -1
+bind ]c urlincrement 1
+unbind <C-x>
+unbind <C-a>
+bind yy clipboard yank
+bind ys clipboard yankshort
+bind yq text2qr --timeout 5
+bind yc clipboard yankcanon
+bind ym clipboard yankmd
+bind yo clipboard yankorg
+bind yt clipboard yanktitle
+bind gh home
+bind gH home true
+bind P mode ignore
+bind j scrollline 3
+unbind <C-e>
+bind k scrollline -3
+unbind <C-y>
+bind h scrollpx -50
+bind l scrollpx 50
+bind G scrollto 100
+bind gg scrollto 0
+bind <C-u> scrollpage -1
+bind <C-d> scrollpage 1
+unbind <C-f>
+unbind <C-b>
+bind <C-v> nmode ignore 1 mode normal
+bind $ scrollto 100 x
+bind ^ scrollto 0 x
+unbind <C-o>
+bind <C-i> editor
+unbind D
+bind gx0 tabclosealltoleft
+bind gx$ tabclosealltoright
+bind << tabmove -1
+bind >> tabmove +1
+bind u scrollpage -0.25
+unbind U
+bind r reload
+bind R reloadhard
+bind gi focusinput -l
+bind g? rot13
+bind g! jumble
+bind g; changelistjump -1
+bind gt tabnext_gt
+bind gT tabprev
+bind g^ tabfirst
+bind g0 tabfirst
+bind g$ tablast
+bind ga tabaudio
+bind gr reader
+bind gu urlparent
+bind gU urlroot
+bind gf viewsource
+bind : fillcmdline_notrail
+bind S fillcmdline tabopen search
+bind M gobble 1 quickmark
+bind B fillcmdline taball
+bind b fillcmdline tab
+bind ZZ qall
+bind f hint
+bind F hint -b
+bind gF hint -qb
+bind ;i hint -i
+bind ;b hint -b
+bind ;o hint
+bind ;I hint -I
+bind ;k hint -k
+bind ;K hint -K
+bind ;y hint -y
+bind ;Y hint -cF img i => tri.excmds.yankimage(tri.urlutils.getAbsoluteURL(i.src))
+bind ;p hint -p
+bind ;h hint -h
+bind v hint -h
+bind ;P hint -P
+bind ;r hint -r
+bind ;s hint -s
+bind ;S hint -S
+bind ;a hint -a
+bind ;A hint -A
+bind ;; hint -; *
+bind ;# hint -#
+bind ;v hint -W mpvsafe
+bind ;V hint -V
+bind ;w hint -w
+bind ;t hint -W tabopen
+bind ;O hint -W fillcmdline_notrail open 
+bind ;W hint -W fillcmdline_notrail winopen 
+bind ;T hint -W fillcmdline_notrail tabopen 
+bind ;d hint -W tabopen --discard
+bind ;gd hint -qW tabopen --discard
+bind ;z hint -z
+bind ;m hint -JFc img i => tri.excmds.open('https://lens.google.com/uploadbyurl?url='+i.src)
+bind ;M hint -JFc img i => tri.excmds.tabopen('https://lens.google.com/uploadbyurl?url='+i.src)
+bind ;gi hint -qi
+bind ;gI hint -qI
+bind ;gk hint -qk
+bind ;gy hint -qy
+bind ;gp hint -qp
+bind ;gP hint -qP
+bind ;gr hint -qr
+bind ;gs hint -qs
+bind ;gS hint -qS
+bind ;ga hint -qa
+bind ;gA hint -qA
+bind ;g; hint -q;
+bind ;g# hint -q#
+bind ;gv hint -qW mpvsafe
+bind ;gw hint -qw
+bind ;gb hint -qb
+bind ;gF hint -qb
+bind ;gf hint -q
+unbind <S-Insert>
+bind <AC-Escape> mode ignore
+bind <AC-`> mode ignore
+unbind <S-Escape>
+bind <Escape> composite mode normal ; hidecmdline
+bind <C-[> composite mode normal ; hidecmdline
+unbind a
+unbind A
+bind zi zoom 0.1 true
+bind zo zoom -0.1 true
+bind zm zoom 0.5 true
+bind zr zoom -0.5 true
+bind zM zoom 0.5 true
+bind zR zoom -0.5 true
+bind zz zoom 0.9
+bind zI zoom 3
+bind zO zoom 0.3
+bind . repeat
+unbind <AS-ArrowUp><AS-ArrowUp><AS-ArrowDown><AS-ArrowDown><AS-ArrowLeft><AS-ArrowRight><AS-ArrowLeft><AS-ArrowRight>ba
+bind m gobble 1 markadd
+bind ` gobble 1 markjump
+bind X undo
+bind n fillcmdline tabopen
+bind co composite getclip | fillcmdline open
+bind td tabduplicate
+bind p nmode ignore 1 mode normal
+bind N current_url tabopen
+unbind T
+unbind gny
+unbind goy
+unbind gwy
+unbind gnj
+unbind goj
+unbind gwj
+bind ' gobble 1 markjump
+unbind <C-n>
+bind tn tabnew
+bind O current_url open
+bind s fillcmdline open search
+bind tr reload
+bind tR reloadall
+bind to tabnew
+bind cn composite getclip | fillcmdline tabopen
+unbind <C-D>
+unbind <C-E>
+unbind <C-U>
+bind <C-j> scrollline 10
+bind <C-k> scrollline -10
+bind ;c hint -Jc [class*="expand"],[class*="togg"],[class="comment_folder"]
+bind cw composite getclip | fillcmdline winopen
+unbind c
+bind cs composite getclip | fillcmdline open search
+bind gsa fillcmdline open amazon
+bind gsg fillcmdline open github
+bind gsw fillcmdline open wikipedia
+bind gsy fillcmdline open youtube
+bind gss fillcmdline open scholar
+bind gsm fillcmdline open mdn
+bindurl www.google.com f hint -Jc #search a
+bindurl www.google.com F hint -Jbc #search a
+bindurl www.google.com gi composite focusinput -l ; text.end_of_line
+bindurl ^https://web.whatsapp.com f hint -c [tabindex]:not(.two)>div,a
+bindurl ^https://web.whatsapp.com F hint -bc [tabindex]:not(.two)>div,a
+bind --mode=ignore p nmode normal 1 mode ignore
+bind --mode=ignore P mode normal
+bind --mode=ignore <S-Insert> mode normal
+bind --mode=ignore <AC-Escape> mode normal
+bind --mode=ignore <AC-`> mode normal
+bind --mode=ignore <S-Escape> mode normal
+bind --mode=ignore <C-o> nmode normal 1 mode ignore
+
+" Subconfig Settings
+seturl www.google.com followpagepatterns.next Next
+seturl www.google.com followpagepatterns.prev Previous
+
+" Aliases
+alias translate js let googleTranslateCallback = document.createElement('script'); googleTranslateCallback.innerHTML = "function googleTranslateElementInit(){ new google.translate.TranslateElement(); }"; document.body.insertBefore(googleTranslateCallback, document.body.firstChild); let googleTranslateScript = document.createElement('script'); googleTranslateScript.charset="UTF-8"; googleTranslateScript.src = "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit&tl=&sl=&hl="; document.body.insertBefore(googleTranslateScript, document.body.firstChild);
+command alias command
+alias au autocmd
+alias aucon autocontain
+alias audel autocmddelete
+alias audelete autocmddelete
+alias blacklistremove autocmddelete DocStart
+alias b tab
+alias clsh clearsearchhighlight
+alias nohlsearch clearsearchhighlight
+alias noh clearsearchhighlight
+alias o open
+alias w winopen
+alias t tabopen
+alias tabgroupabort tgroupabort
+alias tabgroupclose tgroupclose
+alias tabgroupcreate tgroupcreate
+alias tabgrouplast tgrouplast
+alias tabgroupmove tgroupmove
+alias tabgrouprename tgrouprename
+alias tabgroupswitch tgroupswitch
+alias tabnew tabopen
+alias tabm tabmove
+alias tabo tabonly
+alias tn tabnext_gt
+alias bn tabnext_gt
+alias tnext tabnext_gt
+alias bnext tabnext_gt
+alias tp tabprev
+alias tN tabprev
+alias bp tabprev
+alias bN tabprev
+alias tprev tabprev
+alias bprev tabprev
+alias tabfirst tab 1
+alias tablast tab 0
+alias bfirst tabfirst
+alias blast tablast
+alias tfirst tabfirst
+alias tlast tablast
+alias buffer tab
+alias bufferall taball
+alias bd tabclose
+alias bdelete tabclose
+alias quit tabclose
+alias q tabclose
+alias qa qall
+alias sanitize sanitise
+alias saveas! saveas --cleanup --overwrite
+alias tutorial tutor
+alias h help
+alias unmute mute unmute
+alias authors credits
+alias openwith hint -W
+alias ! exclaim
+alias !s exclaim_quiet
+alias containerremove containerdelete
+alias colours colourscheme
+alias colorscheme colourscheme
+alias colors colourscheme
+alias man help
+alias !js fillcmdline_tmp 3000 !js is deprecated. Please use js instead
+alias !jsb fillcmdline_tmp 3000 !jsb is deprecated. Please use jsb instead
+alias get_current_url js document.location.href
+alias current_url composite get_current_url | fillcmdline_notrail 
+alias stop js window.stop()
+alias zo zoom
+alias installnative nativeinstall
+alias nativeupdate updatenative
+alias mkt mktridactylrc
+alias mkt! mktridactylrc -f
+alias mktridactylrc! mktridactylrc -f
+alias mpvsafe js -p tri.excmds.shellescape(JS_ARG).then(url => tri.excmds.exclaim_quiet('mpv --no-terminal ' + url))
+alias drawingstop mouse_mode
+alias exto extoptions
+alias extpreferences extoptions
+alias extp extpreferences
+alias prefset setpref
+alias prefremove removepref
+alias tabclosealltoright tabcloseallto right
+alias tabclosealltoleft tabcloseallto left
+alias reibadailty jumble
+
+" For syntax highlighting see https://github.com/tridactyl/vim-tridactyl
+" vim: set filetype=tridactyl
