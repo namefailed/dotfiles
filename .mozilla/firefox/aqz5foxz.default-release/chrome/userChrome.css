@@ -2,6 +2,7 @@
 See the above repository for updates as well as full license text. */
 
 /* Remove close button*/
+
 .titlebar-spacer[type="pre-tabs"],
 .titlebar-spacer[type="post-tabs"] {
   border-inline-end: 0px solid white !important;
@@ -24,7 +25,7 @@ See the above repository for updates as well as full license text. */
 }
 
 :root[uidensity="touch"] #navigator-toolbox {
-  --uc-bm-padding: 6px
+  --uc-bm-padding: 6px;
 }
 
 :root[chromehidden~="directories"] #navigator-toolbox {
@@ -64,7 +65,7 @@ See the above repository for updates as well as full license text. */
 
 #nav-bar[customizing],
 #PersonalToolbar[customizing] {
-  transform: none !important
+  transform: none !important;
 }
 
 #navigator-toolbox>#PersonalToolbar {
@@ -77,11 +78,12 @@ See the above repository for updates as well as full license text. */
 }
 
 /* Make sure the bookmarks toolbar is never collapsed even if it is disabled */
+
 :root[sizemode="fullscreen"] #PersonalToolbar,
 #PersonalToolbar[collapsed="true"] {
   min-height: initial !important;
   max-height: initial !important;
-  visibility: hidden !important
+  visibility: hidden !important;
 }
 
 #PersonalToolbar[collapsed="true"] #PlacesToolbarItems>*,
@@ -90,20 +92,24 @@ See the above repository for updates as well as full license text. */
 }
 
 /* Selected tab needs higher z-index now to "hide" the broder below it */
+
 .tabbrowser-tab[selected] {
   z-index: 3 !important;
 }
 
 /* Show when cursor is over main menu popup - this requires :has selector support */
+
 #mainPopupSet:has(> #appMenu-popup:hover)~toolbox>.browser-toolbar {
   transition-delay: 100ms !important;
   transform: rotateX(0);
 }
 
 /* SELECT TOOLBAR BEHAVIOR */
+
 /* Comment out or delete one of these to disable that behavior */
 
 /* Show when urlbar is focused */
+
 #nav-bar:focus-within+#PersonalToolbar,
 #navigator-toolbox>#nav-bar:focus-within {
   transition-delay: 100ms !important;
@@ -111,20 +117,23 @@ See the above repository for updates as well as full license text. */
 }
 
 /* Show when cursor is over the toolbar area */
+
 #navigator-toolbox:hover>.browser-toolbar {
   transition-delay: 100ms !important;
   transform: rotateX(0);
 }
 
 /* This ruleset is separate, because not having :has support breaks other selectors as well */
+
 #mainPopupSet:has(> #appMenu-popup:hover)~#navigator-toolbox>.browser-toolbar {
   transition-delay: 33ms !important;
   transform: rotateX(0);
 }
 
 /* This makes the tab notification box show immediately below tabs, otherwise it would break the layout */
+
 #navigator-toolbox>div {
-  display: contents
+  display: contents;
 }
 
 :where(#titlebar, #tab-notification-deck, .global-notificationbox) {
@@ -165,3 +174,8 @@ See the above repository for updates as well as full license text. */
   pointer-events: none !important;
 }
 */
+
+statuspanel[type="overLink"],
+#statuspanel[type="overLink"] {
+  display: none !important;
+}

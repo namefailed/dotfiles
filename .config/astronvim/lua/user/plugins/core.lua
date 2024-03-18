@@ -40,8 +40,6 @@ return {
       return opts
     end,
   },
-  { "max397574/better-escape.nvim", enabled = false },
-  { "rcarriga/nvim-notify",         enabled = false },
   {
     "rebelot/heirline.nvim",
     opts = function(_, opts)
@@ -65,4 +63,6 @@ return {
       },
     },
   },
+  { "max397574/better-escape.nvim", enabled = false },
+  { "rcarriga/nvim-notify",         enabled = false },
 }

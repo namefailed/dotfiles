@@ -12,7 +12,7 @@ set hintfiltermode vimperator-reflow
 set hintdelay 100
 set editorcmd tdrop -ma -w 86% -h 86% -x 7% -y 7% -n tdrop --class="firefox" alacritty --title="firefox" -e nvim
 set newtab about:blank
-set allowautofocus true
+set allowautofocus false
 set hintshift true
 set modeindicatorshowkeys true
 set jumpdelay 1500
@@ -50,8 +50,6 @@ bind yc clipboard yankcanon
 bind ym clipboard yankmd
 bind yo clipboard yankorg
 bind yt clipboard yanktitle
-bind gh home
-bind gH home true
 bind P mode ignore
 bind j scrollline 3
 unbind <C-e>
@@ -125,9 +123,9 @@ bind ;v hint -W mpvsafe
 bind ;V hint -V
 bind ;w hint -w
 bind ;t hint -W tabopen
-bind ;O hint -W fillcmdline_notrail open 
-bind ;W hint -W fillcmdline_notrail winopen 
-bind ;T hint -W fillcmdline_notrail tabopen 
+bind ;O hint -W fillcmdline_notrail open
+bind ;W hint -W fillcmdline_notrail winopen
+bind ;T hint -W fillcmdline_notrail tabopen
 bind ;d hint -W tabopen --discard
 bind ;gd hint -qW tabopen --discard
 bind ;z hint -z
@@ -209,6 +207,12 @@ bind gsw fillcmdline open wikipedia
 bind gsy fillcmdline open youtube
 bind gss fillcmdline open scholar
 bind gsm fillcmdline open mdn
+bind tw tabdetach
+bind yg composite js "git clone " + document.location.href.replace(/https?:\/\//,"git@").replace("/",":").replace(/$/,".git") | clipboard yank
+bind gnm tabopen https://www.youtube.com/
+bind gom open https://www.youtube.com/
+bind gwm winopen https://www.youtube.com/
+bind gse fillcmdline open ebay
 bindurl www.google.com f hint -Jc #search a
 bindurl www.google.com F hint -Jbc #search a
 bindurl www.google.com gi composite focusinput -l ; text.end_of_line
@@ -225,6 +229,8 @@ bind --mode=ignore <C-o> nmode normal 1 mode ignore
 " Subconfig Settings
 seturl www.google.com followpagepatterns.next Next
 seturl www.google.com followpagepatterns.prev Previous
+seturl https://www.google.com/ allowautofocus false
+seturl google.com allowautofocus false
 
 " Aliases
 alias translate js let googleTranslateCallback = document.createElement('script'); googleTranslateCallback.innerHTML = "function googleTranslateElementInit(){ new google.translate.TranslateElement(); }"; document.body.insertBefore(googleTranslateCallback, document.body.firstChild); let googleTranslateScript = document.createElement('script'); googleTranslateScript.charset="UTF-8"; googleTranslateScript.src = "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit&tl=&sl=&hl="; document.body.insertBefore(googleTranslateScript, document.body.firstChild);
@@ -291,7 +297,7 @@ alias man help
 alias !js fillcmdline_tmp 3000 !js is deprecated. Please use js instead
 alias !jsb fillcmdline_tmp 3000 !jsb is deprecated. Please use jsb instead
 alias get_current_url js document.location.href
-alias current_url composite get_current_url | fillcmdline_notrail 
+alias current_url composite get_current_url | fillcmdline_notrail
 alias stop js window.stop()
 alias zo zoom
 alias installnative nativeinstall
@@ -309,6 +315,9 @@ alias prefremove removepref
 alias tabclosealltoright tabcloseallto right
 alias tabclosealltoleft tabcloseallto left
 alias reibadailty jumble
+
+" Removed settings
+setnull translate
 
 " For syntax highlighting see https://github.com/tridactyl/vim-tridactyl
 " vim: set filetype=tridactyl

@@ -1,15 +1,13 @@
 return {
   "AstroNvim/astrocommunity",
   -- Colorscheme
-  { import = "astrocommunity.colorscheme.nord-nvim" },
-  { import = "astrocommunity.colorscheme.nordic-nvim" },
   { import = "astrocommunity.colorscheme.catppuccin" },
   -- Bars and Lines
-  { import = "astrocommunity.bars-and-lines.heirline-vscode-winbar" },
-  { import = "astrocommunity.bars-and-lines.heirline-mode-text-statusline" },
-  { import = "astrocommunity.bars-and-lines.scope-nvim" },
+  -- { import = "astrocommunity.bars-and-lines.heirline-vscode-winbar" },
+  -- { import = "astrocommunity.bars-and-lines.heirline-mode-text-statusline" },
+  -- { import = "astrocommunity.bars-and-lines.scope-nvim" },
   -- Scrolling
-  { import = "astrocommunity.scrolling.satellite-nvim" },
+  -- { import = "astrocommunity.scrolling.satellite-nvim" },
   -- Editing Support
   { import = "astrocommunity.editing-support.todo-comments-nvim" },
   -- Motion
@@ -53,4 +51,12 @@ return {
     },
   -- AI
   { import = "astrocommunity.completion.copilot-lua-cmp" },
+  {
+    "copilot.lua",
+    config = function()
+      require("copilot").setup({
+        copilot_node_command = "/home/grey/.local/node/bin/node"
+      })
+    end,
+  },
 }
