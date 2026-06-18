@@ -1,0 +1,10 @@
+#+title:      GitHub Copilot (local state)
+#+date:       [2026-05-20 Tue]
+
+* Status
+
+**State-only** — session YAML, marketplace caches. See [[file:copilot.org][copilot.org]].
+
+* yadm
+
+Not tracked except this README and =copilot.org= stub.

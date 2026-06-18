@@ -1,0 +1,28 @@
+#+title:      Everything Configuration
+#+date:       [2026-05-14 Thu]
+#+filetags:   :config:search:
+
+* Overview
+
+=everything.org= is the source of truth for the managed Everything profile. It
+tangles to =Everything.ini=, which the runtime reads via the
+=%APPDATA%\Everything\Everything.ini= symlink.
+
+* Files
+
+- =everything.org= -- source of truth
+- =Everything.ini= -- tangled Everything config
+
+* Scope
+
+- Track stable search/index preferences here
+- Keep volatile window geometry and other low-value UI state out of the managed
+  source unless it becomes important enough to preserve deliberately
+
+* Reload
+
+After editing =everything.org=, =tangle everything= and restart Everything.
+
+* PKM (Documents/org)
+
+- Denote: [[file:../../../../Documents/org/notes/tools/20260514T022400--everything__tools_reference.org][Everything]] (=20260514T022400=)

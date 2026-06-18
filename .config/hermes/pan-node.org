@@ -1,0 +1,42 @@
+#+title:      Pan — second Hermes node (documentation)
+#+date:       [2026-06-01]
+#+filetags:   :config:ai:hermes:pan:doc:
+
+#+begin_quote
+This file *documents* the Pan node. Pan's actual runtime config lives on the Pan
+machine (=pan-gpu=), not in this repo — this repo is the main PC's dotfiles.
+Edit Pan's config there: =~/.config/hermes/hermes.org= on Pan (WSL2 Ubuntu).
+#+end_quote
+
+* What Pan is
+
+A *second* Hermes Agent (v0.15.1), running in *WSL2 Ubuntu* on the GPU laptop
+(referred to here as =pan-gpu=, my account =grey=). The main PC runs Hermes *natively on Windows*;
+Pan runs in WSL — intentionally different. Pan = the GPU-bearing child of Hermes.
+
+| Key | Value |
+|-----+-------|
+| Tailscale | =***.***.***.***= (main/Hermes = =***.***.***.***=) |
+| =HERMES_HOME= | =~/.config/hermes= (on Pan) |
+| Telegram | =@grey_pan_bot= |
+| Persona/skin | =SOUL.md= + =skins/pan.yaml= (on Pan) |
+
+* Relationship to this repo
+
+- This main-PC dotfiles repo is unchanged by Pan; Pan keeps its own =~/.config/hermes=.
+- The two nodes share the same provider keys (=opencode-go=/=opencode-zen=) and the
+  same Basic Memory brain (Pan tunnels to main's MCP).
+- Both should run the *same* Ollama model (=OLLAMA_MAX_LOADED_MODELS=1= → otherwise thrash).
+
+* Full docs
+
+- Basic Memory: =reference/pan-agent=, =changelog/2026-06-01-pan-gpu-node=
+- Denote: =notes/ai/20260601T120000--pan-agent__ai_hermes_pan.org=
+
+* Pan config maintenance (on the Pan machine)
+
+#+begin_src sh
+ssh grey@***.***.***.*** -p 2222          # into Pan
+nano ~/.config/hermes/hermes.org        # literate source (tangles to config.yaml)
+sudo systemctl restart pan-gateway       # apply
+#+end_src

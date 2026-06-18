@@ -1,0 +1,28 @@
+#+title:      Doom Emacs (DOOMDIR)
+#+date:       [2026-05-19 Mon]
+#+filetags:   :config:emacs:
+
+* Overview
+
+User layer for Doom Emacs. Lives at =~/.config/doom= (=DOOMDIR=). Not part of the
+batch =tangle all= scan for generic =~/.config/*.org= — tangle these files explicitly.
+
+* Files
+
+| File | Tangles to | Reload |
+|------+------------+--------|
+| =config.org= | =config.el= | =M-x doom/reload= |
+| =init.org= | =init.el=, =packages.el= | =doom sync= + restart Emacs |
+
+* Workflow
+
+1. Edit =config.org= and/or =init.org=
+2. =tangle config= / =tangle init= (or =M-x org-babel-tangle=)
+3. =init.org= changes: =doom sync= in a terminal, then restart Emacs
+4. =config.org= changes: =M-x doom/reload= usually sufficient
+
+* PKM (Documents/org)
+
+- Denote: [[file:../../../../Documents/org/notes/tools/20260509T040400--doom-emacs__tools_reference.org][Doom Emacs]] (=20260509T040400=)
+- Deep reference: [[file:../../../../Documents/org/notes/personal/20260509T000000--doom-emacs-config-reference__personal_pkm_reference.org][Doom Emacs Configuration Reference]] (=20260509T000000=)
+- Hub: [[file:../../../../Documents/org/notes/tools/20260509T122500--windows-dev-environment__tools_reference.org][Windows Dev Environment]]

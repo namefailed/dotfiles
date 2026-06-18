@@ -1,0 +1,130 @@
+#+title:      PowerShell Profile
+#+date:       [2026-05-16 Fri]
+#+filetags:   :config:shell:
+
+This profile is defined in =powershell.org= and tangles to
+=Microsoft.PowerShell_profile.ps1=. It aims for a fast interactive shell with
+Vi-style editing, Catppuccin coloring, lazy-loaded extras, and a handful of
+workflow helpers.
+
+* Files
+
+- =powershell.org= -- source of truth
+- =Microsoft.PowerShell_profile.ps1= -- tangled profile
+- =$PROFILE= (=$HOME\Documents\PowerShell\Microsoft.PowerShell_profile.ps1=) -- one-line dot-source into the tangled file
+- Dot-sources [[file:../scripts/_lib/config-paths.ps1][config-paths.ps1]] at load
+
+* Environment
+
+- =$env:HOME = $env:USERPROFILE= — Unix-style home for tools and scripts
+- Shared path helpers: =Get-EmacsExecutable=, =Resolve-WinGetPackageExe=, =$script:ConfigRoot=
+
+* PKM (Documents/org)
+
+- Denote: [[file:../../../../Documents/org/notes/tools/20260509T041300--powershell__tools_reference.org][PowerShell]] (=20260509T041300=)
+- Portability: [[file:../../../../Documents/org/notes/tools/20260519T120000--config-portability-and-path-conventions__tools_reference.org][Config Portability]]
+
+* Main Features
+
+- =PSReadLine= in Vi mode with inline predictions and custom colors
+- optional =Az.Tools.Predictor= integration when installed
+- lazy-loaded =posh-git= and =PSFzf=
+- =starship= prompt initialization
+- =zoxide= initialization plus a wrapper =z= function (flags, list, interactive)
+- =eza= aliases for file listings
+- =bat= as =cat= when available
+- =gsudo= as =sudo= when available
+
+* Interactive Keys
+
+- =RightArrow= -- accept the next suggestion word
+- =Tab= -- menu completion
+- =Up/Down= -- smart history search (filters by typed prefix)
+- =Ctrl+r= -- FZF history search
+- =Ctrl+f= -- FZF file picker via =fd=
+- =Ctrl+d= -- FZF directory picker via =fd=
+- =Ctrl+j= -- FZF-backed =zoxide= jump
+- =Alt+Left= -- =back=
+- =Alt+Right= -- =forward=
+
+* Helpers
+
+- zoxide: =z= (enhanced zoxide -- flags, list, interactive)
+- bookmarks: =mark=, =jump=
+- directory stack: =back=, =forward=, =stack=
+- search: =fzf-rg=
+- Everything search: =ef=, =eff=, =efd=, =eopen=, =ecd=
+- tangling: =tangle all= or =tangle <stem>=; =tangle-check= (read-only drift); =tangle-check -Fix=; =tangle-validate=
+- scripts: =bm-up=, =bm-docs=, =deploy-startup= (admin), =webterm=, =pkm-check= — [[file:../scripts/scripts.org][scripts.org]]
+- git helpers: =gco=, =glog=, =gadd=, =gstash=
+- process killer: =fkill= (interactive or by name, e.g., =fkill chrome=)
+- privilege helper: =psudo= (re-run last command with elevation)
+- config editor: =profile= (fzf picker) or =profile <config-name>=
+- config editor targets: =powershell=, =git=, =kanata=, =komorebi=,
+  =starship=, =espanso=, =everything=, =basic-memory=, =cursor=,
+  =scripts=, =ttyd=, =wtq=, =vscode=, =windsurf=,
+  =flowlauncher=, =windows-terminal=, =tridactyl=
+- misc: =mkcd=, =take=, =extract=, =reload=, =which=, =whereami=, =touch=, =serve=, =copypath=, =zoxide-add-home=
+- shell helpers: =bash= (run command via Git Bash), =doom= (Doom CLI via Git Bash)
+
+Everything helpers:
+
+- =ef <terms>= -- search Everything results
+- =eff <terms>= -- files only
+- =efd <terms>= -- folders only
+- =eopen <terms>= -- open the first match (= -Select = to pick with =fzf=)
+- =ecd <terms>= -- enter the first matching directory (= -Select = to pick with =fzf=)
+
+* Common Aliases
+
+| Alias  | Command |
+|--------+---------|
+| =ls=   | =eza --icons= |
+| =ll=   | =eza -l --icons= |
+| =la=   | =eza -la --icons= |
+| =lt=   | =eza -T --icons= |
+| =cat=  | =bat= (when available) |
+| =sudo= | =gsudo= (when available) |
+
+* Config Script Aliases
+
+Defined in =powershell.org= (section *Config script shortcuts*), documented in
+[[file:../scripts/scripts.org][scripts.org]]:
+
+| Alias                | Action |
+|----------------------+--------|
+| =tangle=            | =tangle all= or =tangle <org>= |
+| =tangle-check=      | Drift check without overwriting disk (=-Fix= to re-tangle in place) |
+| =tangle-validate=   | =tangle-configs.ps1 -Validate= |
+| =bm-up=             | Start Basic Memory MCP on :8765 |
+| =bm-docs=           | Export PKM workflow → Basic Memory bootstrap |
+| =deploy-startup= | Copy =startup-orchestrator.vbs= to ProgramData (admin) |
+| =pkm-check=         | PKM integrity verification |
+| =webterm=           | ttyd start/stop/status |
+| =psudo=             | Re-run last command with =sudo= |
+
+* Performance
+
+Startup is optimized through several strategies:
+
+- *Batched command checks*: All external commands are checked once at startup
+  via a single PATH enumeration, cached in =$__cmds= for reuse
+- *Deferred Az.Tools.Predictor*: Loads asynchronously after first prompt appears,
+  avoiding the slow =Get-Module -ListAvailable= call on every startup
+- *Lazy directory creation*: =~/.marks= is created only when you first use =mark=
+- *Stream-based history*: =Ctrl+r= uses =[System.IO.File]::ReadLines()= for
+  efficient handling of large history files
+
+* Reload
+
+The =tangle= command behaves like this:
+
+- =tangle all= -- run the batch tangle across =~/.config= (via =utility/tangle-configs.ps1=)
+- =tangle <document>= -- tangle one Org source by full path, path under
+  =~/.config=, or a unique bare stem such as =kanata=
+
+#+begin_example
+. $PROFILE
+#+end_example
+
+Restarting the shell is also fine.

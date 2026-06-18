@@ -1,0 +1,25 @@
+#+title:  Contributing / New-Machine Checklist
+#+date:    [2026-05-29 Fri]
+#+filetags: :config:reference:
+
+* Bootstrap
+
+Run after =yadm clone= on a fresh machine:
+
+1. Install winget toolchain (git, emacs, everything, wezterm, komorebi, kanata, …)
+   → [[file:scripts/scripts.org::*Provisioning][scripts.org → Provisioning]]
+2. =cd ~/.config=
+3. =tangle all= — regenerate all literate config files
+4. =tangle kanata= — kanata.kbd (excluded from git)
+5. =tangle-check= — verify drift
+6. Copy =startup-orchestrator.vbs= to =ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp=
+7. Run =deploy-startup.ps1= (admin)
+8. =doom install && doom sync=
+9. Clone =~/Documents/org= and =~/basic-memory=
+10. Review =README.org= for remaining manual steps
+
+* Related
+
+- [[file:README.org][README]]
+- [[file:scripts/scripts.org][scripts.org]] — full runbook
+- [[denote:20260514T032500][Windows Dotfiles]] — Denote note

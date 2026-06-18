@@ -1,0 +1,62 @@
+#+title:      VS Code Configuration
+#+date:       [2026-05-13 Tue]
+#+filetags:   :config:editor:
+
+* Overview
+
+=vscode.org= is the source of truth for =settings.json= and =keybindings.json=.
+The config is mainly
+theme and trust-policy oriented: Catppuccin Mocha visuals, pink UI accents,
+trusted schema download domains, and MCP gallery enabled.
+
+* Files
+
+- =vscode.org= -- source of truth for settings and keybindings
+- =settings.json= -- tangled settings
+- =keybindings.json= -- tangled keybindings (currently empty by design)
+- =mcp.json= -- Basic Memory MCP server list (tangled from [[file:../basic-memory/basic-memory.org][basic-memory.org]]; copy to =AppData/Roaming/Code/User/mcp.json= for Copilot Chat)
+
+* Theme
+
+- Color theme: =Catppuccin Mocha=
+- Icon theme: =catppuccin-mocha=
+- Accent color: =#f5c2e7=
+
+Pink accent overrides are applied to focus borders, links, activity bar state,
+sidebar headers, list selections, active tab borders, panel titles, buttons,
+and the progress bar.
+
+* Editor Behavior
+
+Quality-of-life editor settings for efficient editing:
+
+- *Font*: JetBrainsMono NFM with ligatures enabled (==> becomes an arrow)
+- *Line numbers*: Relative (shows distance for Vim-style navigation)
+- *Minimap*: Disabled (saves screen space)
+- *Format on save*: Auto-formats code on =Ctrl+S=
+- *Cursor*: Smooth caret animation and blinking
+
+* MCP and Trust Settings
+
+- =chat.mcp.gallery.enabled= is enabled
+- untrusted files open with workspace trust behavior instead of being blocked
+
+Trusted schema domains:
+
+- =https://aka.ms=
+- =https://developer.microsoft.com/json-schemas/=
+- =https://json-schema.org/=
+- =https://json.schemastore.org/=
+- =https://raw.githubusercontent.com/devcontainers/spec/=
+- =https://raw.githubusercontent.com/microsoft/vscode/=
+- =https://schemastore.azurewebsites.net/=
+- =https://www.schemastore.org/=
+
+* Reload
+
+After editing =vscode.org=, run =tangle vscode= and restart VS Code.
+
+* PKM (Documents/org)
+
+- Denote: [[file:../../../../Documents/org/notes/tools/20260514T012300--vs-code__tools_reference.org][VS Code]] (=20260514T012300=)
+- Cheatsheet: [[file:../../../../Documents/org/notes/personal/20260517T010547--vscode-cheatsheet__tools_cheatsheet.org][VS Code Cheatsheet]]

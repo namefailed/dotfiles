@@ -1,0 +1,41 @@
+#+title:      Espanso Text Expansion
+#+date:       [2026-05-14 Thu]
+#+filetags:   :config:text-expander:
+
+* Overview
+
+=espanso.org= is the source of truth for the active Espanso setup. It tangles to
+=config/default.yml= and =match/base.yml=, which are the runtime files consumed
+by Espanso.
+
+Although Espanso expects its config at =%APPDATA%\espanso= on Windows, that path
+is now a junction back to =~/.config/espanso=. This keeps the live config,
+literate source, and package-managed match directory together under one tree.
+
+* Files
+
+- =espanso.org= -- source of truth
+- =config/default.yml= -- tangled global Espanso config
+- =match/base.yml= -- tangled starter matches
+- =match/packages/= -- package-managed match content
+
+* Starter Matches
+
+- =:date= / =:time= / =:now=
+- =:orgts= / =:log=
+- =:todo= / =:orgtodo=
+- =:denote= / =:orglink=
+
+* Reload
+
+After editing =espanso.org=, tangle and restart Espanso:
+
+#+begin_example
+espansod.exe restart
+#+end_example
+
+* PKM (Documents/org)
+
+- Denote: [[file:../../../../Documents/org/notes/tools/20260514T025900--espanso__tools_reference.org][Espanso]] (=20260514T025900=)
+- Tangle: =tangle espanso=
+- Started at login via [[file:../scripts/README.org][startup-orchestrator.vbs]]

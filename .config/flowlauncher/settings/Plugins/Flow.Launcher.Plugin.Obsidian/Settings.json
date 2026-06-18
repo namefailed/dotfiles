@@ -1,0 +1,39 @@
+{
+  "MaxResult": 0,
+  "UseAliases": true,
+  "UseFilesExtension": false,
+  "AddCheckBoxesToContext": true,
+  "AddGlobalFolderExcludeToContext": true,
+  "AddLocalFolderExcludeToContext": false,
+  "AddCreateNoteOptionOnAllSearch": true,
+  "GlobalVaultSetting": {
+    "OpenInNewTabByDefault": false,
+    "SearchMarkdown": true,
+    "SearchCanvas": true,
+    "SearchImages": false,
+    "SearchExcalidraw": true,
+    "SearchOther": false,
+    "SearchContent": false,
+    "ExcludedPaths": [
+      ".trash",
+      ".obsidian"
+    ]
+  },
+  "VaultsSetting": {
+    "3c542f468ff3fd86": {
+      "UseGlobalSetting": true,
+      "UseGlobalExcludedPaths": true,
+      "OpenInNewTabByDefault": false,
+      "SearchMarkdown": true,
+      "SearchCanvas": true,
+      "SearchImages": false,
+      "SearchExcalidraw": true,
+      "SearchOther": false,
+      "SearchContent": false,
+      "ExcludedPaths": [
+        ".trash",
+        ".obsidian"
+      ]
+    }
+  }
+}

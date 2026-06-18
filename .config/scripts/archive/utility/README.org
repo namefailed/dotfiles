@@ -1,0 +1,13 @@
+#+title:      Archived utility scripts
+#+date:       [2026-05-20 Tue]
+
+| Script | Was for |
+|--------+---------|
+| =check-config-drift.ps1= | Drift check (superseded by =tangle-check= / =verify-org-tangle-sync.ps1=) |
+| =complete-t3-junctions.ps1= | Finish Cursor / =vscode-shared= XDG junctions |
+| =register-org-protocol.ps1= | Windows =org-protocol://= handler → Emacs |
+| =elevated-cleanup.ps1= | Admin disk cleanup (stale Program Files dirs) |
+
+**Active** utility scripts: [[file:../../../powershell/utility/][powershell/utility/]].
+
+Literate source: [[file:../../../scripts.org::*Archived utility scripts][scripts.org]].

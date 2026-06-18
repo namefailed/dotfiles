@@ -1,0 +1,8 @@
+{
+  "UseCustomBrowser": true,
+  "BrowserPath": "C:\\Program Files\\Mozilla Firefox\\firefox.exe",
+  "OpenInNewBrowserWindow": false,
+  "OpenInPrivateMode": false,
+  "PrivateModeArgument": "",
+  "AlwaysOpenWithHttps": true
+}

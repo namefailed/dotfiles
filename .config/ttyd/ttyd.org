@@ -1,0 +1,40 @@
+#+title:      ttyd — Web Terminal
+#+date:       [2026-05-21 Thu]
+#+filetags:   :config:remote:terminal:
+#+OPTIONS:    toc:2 num:nil broken-links:mark
+#+STARTUP:    overview
+
+#+begin_quote
+⚠ ttyd is a binary installed via winget. No files in this directory are tangled;
+this file is a literate reference documenting its role in the stack.
+#+end_quote
+
+* Overview
+
+=ttyd= shares a terminal over HTTP + WebSocket. A phone browser can open
+a full PowerShell prompt without installing an SSH client.
+
+| Setting      | Value                           |
+|--------------+---------------------------------|
+| Version      | 1.7.7                           |
+| Installed via| winget (tsl0922.ttyd)           |
+| Real binary  | =WinGet\Packages\...\ttyd.exe=  |
+| Port         | 7681                            |
+| Shell        | =cmd.exe= (=pwsh.exe= crashes ttyd — root cause unknown) |
+| Trigger      | On-demand (=toggle-ttyd.ps1=)   |
+
+* Security
+
+ttyd is bound to =0.0.0.0:7681= but only reachable through the Tailscale
+interface (=100.x.x.x=). It has no authentication layer — the Tailscale
+mesh VPN is the sole access control. Start only when needed, stop when done.
+
+A custom firewall rule was created with =Profile Any= because the default
+winget rule scopes to the Public profile, but the Tailscale virtual adapter
+uses the Private profile. See =enable-ttyd-firewall.ps1= for the rule.
+
+* Related
+
+- [[file:../scripts/scripts.org::*Remote Access][scripts.org → Remote Access]] — toggle script and full setup guide
+- Shell alias =webterm= → =~/.config/scripts/remote/ttyd-toggle.ps1= (=webterm start= / =stop= / =status=)
+- [[denote:20260515T202046][Remote Access Setup]] — Denote note with full system documentation

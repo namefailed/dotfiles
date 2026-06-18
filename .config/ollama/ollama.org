@@ -1,0 +1,152 @@
+#+title:      Ollama
+#+date:       [2026-05-19 Tue]
+#+filetags:   :config:ai:ollama:
+#+PROPERTY:   header-args:pwsh :tangle env.ps1 :mkdirp yes
+
+#+begin_quote
+⚠ *DO NOT EDIT =env.ps1= DIRECTLY.*
+
+This =ollama.org= file is the source of truth. Edit here, then tangle with
+=tangle ollama= (or =M-x org-babel-tangle=) to deploy =env.ps1=.
+#+end_quote
+
+* Overview
+
+Ollama — local LLM runner for Windows (AMD Ryzen 7 7730U, CPU-only).
+
+| Key | Value |
+|---------+------------------------------------------------------------|
+| Binary | =%LOCALAPPDATA%\Programs\Ollama\ollama.exe= |
+| Data | =~/.ollama/= (models, cache, keys) |
+| Config | N/A — environment variables only |
+
+Ollama started via tray app on login. No Windows service registered; built-in
+=ollama.exe serve= runs the HTTP server at =http://localhost:11434=.
+
+* Models
+
+Installed models (AMD CPU, no CUDA, no ROCm — CPU inference only).
+
+| Model | Size | Context | Tok/s | Use |
+|-------+------+---------+-------+-----|
+| =llama3.2:3b= | 2.0 GB | 114K | ~8-15 | Best for agent work (114K via API num_ctx) |
+| =phi3:mini= | 2.2 GB | 24K | ~8-15 | Smarter general chat, lower context limit |
+| =phi3-16k= | 2.2 GB | 16K | ~8-15 | phi3 with 16K baked in for CLI use |
+| =qwen2.5-coder:1.5b= | 986 MB | 32K | ~30-50 | Fast compression, simple queries |
+
+Both loaded on demand by Ollama; no preloading needed.
+
+* Environment Variables
+
+Ollama on Windows reads env vars from the process that starts the server.
+The tray app inherits User-level env vars from Windows.
+
+** OLLAMA_HOST (default =127.0.0.1:11434=)
+
+Already correct — no change needed.
+
+** OLLAMA_KEEP_ALIVE (default =5m=)
+
+How long models stay in GPU/system memory after last use.
+
+=15m= balances responsiveness (model stays hot for follow-up calls) against
+RAM pressure on a 14 GB system.
+
+** OLLAMA_NUM_PARALLEL (default =1=)
+
+Whether Ollama can process multiple requests concurrently.
+
+Set to =2= so Hermes compression and an ad-hoc query can run in parallel
+without queueing.
+
+** OLLAMA_MAX_LOADED_MODELS (default =3=)
+
+Maximum number of models to keep in memory simultaneously.
+
+Set to =1= — with 14 GB RAM we never want two ~2 GB models loaded at once.
+
+** OLLAMA_NO_CLOUD (default =0=)
+
+Disable remote inference and web search features.
+
+Set to =1= — we use Ollama purely for local inference.
+
+** OLLAMA_CONTEXT_LENGTH (default varies)
+
+Context window size for all models. Default depends on available VRAM; on
+CPU-only systems (no CUDA/ROCm) it may default as low as 2048.
+
+Maximum context per model (tested on 14 GiB RAM):
+- =llama3.2:3b=: **114K** (128K native, but 114K is the max that fits)
+- =phi3:mini=: **24K** (128K native with RoPE scaling, 24K max on this hardware)
+- =qwen2.5-coder:1.5b=: **32K** (architectural cap, fits at full capacity)
+- =phi3-16k=: **16K** (custom model with context baked in)
+
+Set to =32768= (32K) as the default — applies to models that can use it.
+Models with lower caps ignore this value.
+
+The following block tangles to =env.ps1= — a PowerShell snippet that sets
+User-level environment variables. Source it from your PowerShell profile
+or run once: =\."$env:XDG_CONFIG_HOME\ollama\env.ps1"=
+
+#+begin_src pwsh
+# Ollama environment variables
+# Deployed from ~/.config/ollama/ollama.org — edit org, then tangle.
+
+$ollamaVars = @{
+    OLLAMA_KEEP_ALIVE        = "15m"
+    OLLAMA_NUM_PARALLEL      = "2"
+    OLLAMA_MAX_LOADED_MODELS  = "1"
+    OLLAMA_NO_CLOUD          = "1"
+    OLLAMA_MODELS            = (Join-Path $env:USERPROFILE '.local\share\ollama\models')
+    OLLAMA_CONTEXT_LENGTH    = "32768"
+}
+
+foreach ($key in $ollamaVars.Keys) {
+    $value = $ollamaVars[$key]
+    [Environment]::SetEnvironmentVariable($key, $value, "User")
+    Write-Host "  Set $key = $value"
+}
+#+end_src
+
+* Overview & Architecture
+
+Ollama is the local LLM runtime environment.
+
+**Why Ollama?**
+Running LLMs locally is critical for latency-sensitive AI tasks (like inline code completion or quick natural language shell queries) without incurring API costs or sending proprietary data over the network. Ollama manages these models and exposes a unified API.
+
+* Integration with Hermes
+
+Configured as the =custom= provider for =auxiliary.compression= in
+=~/.config/hermes/hermes.org=.
+
+See also:
+- [[file:~/.config/hermes/hermes.org][Hermes Agent Config]]
+
+* Quick Reference
+
+| Command | Effect |
+|---------+--------|
+| =ollama list= | Show installed models |
+| =ollama ps= | Show loaded models |
+| =ollama run qwen2.5-coder:1.5b= | Interactive chat (local) |
+| =ollama stop qwen2.5-coder:1.5b= | Unload model from memory |
+| =ollama pull <model>= | Download a new model |
+| =ollama rm <model>= | Delete a model |
+
+* File Layout
+
+Models moved to =~/.local/share/ollama/models/= via =OLLAMA_MODELS= env var.
+Old =~/.ollama/models/= has been migrated. The =models/= directory is
+excluded from yadm tracking via =.gitignore=.
+
+Old =~/.hermes/= deleted — =HERMES_HOME= points to =~/.config/hermes/=.
+
+* Start / Stop
+
+Ollama starts from the tray. To restart the server:
+#+begin_src pwsh :tangle none
+taskkill /f /im ollama.exe
+& "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe" serve
+#+end_src

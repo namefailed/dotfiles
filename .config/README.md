@@ -1,0 +1,62 @@
+# `~/.config` — Personal Tooling Architecture
+
+> **Canonical documentation:** [README.org](README.org) (Org source). This Markdown file is a GitHub-friendly mirror.
+
+This directory serves as the canonical source for my Windows-side development
+environment. It utilizes a **literate configuration** workflow: configurations
+are authored in Org-mode files and "tangled" (extracted) into the runtime
+formats required by individual tools.
+
+## Design Philosophy
+
+This environment is built with a specific goal: **frictionless, ADHD-optimized productivity**.
+
+- **Keyboard First:** Zero reliance on the mouse.
+- **No Corner Reaching:** All modifiers live on the home row via Kanata. You never have to stretch for Control, Alt, or Shift.
+- **Visual Consistency:** The entire environment uses the `Catppuccin Mocha` color palette. The terminal, the editor, the window borders, and the status bar share the exact same aesthetic to reduce visual noise.
+- **Literate Configs:** Code without context is useless. Every single setting is documented in an `.org` file explaining *why* the choice was made.
+
+## System Architecture
+
+The core of this environment is built around three major pillars: **Input Management, Window Management, and Editor**.
+
+```mermaid
+graph TD
+    A[Physical Keyboard] -->|Raw Input| B(Kanata)
+    B -->|Home Row Mods| C{Komorebi WM}
+    B -->|Launcher Layer| D[Flow Launcher]
+    C -->|Tiling| E[WezTerm]
+    C -->|Floating| F[WTQ Dropdown]
+    C -->|Tiling| G[Doom Emacs]
+```
+
+- **Kanata:** A kernel-level key remapper. It intercepts all keystrokes *before* the OS sees them, handling home-row modifiers and dedicated layers (WM layer, Launcher layer) without OS-level conflicts.
+- **Komorebi:** A tiling window manager that enforces strict BSP (Binary Space Partitioning) layouts and provides workspace routing.
+- **WTQ + WezTerm:** A drop-down, Quake-style terminal permanently pinned to Win + ~. WezTerm's native Win32 architecture allows it to bypass Komorebi's tiling natively.
+
+## System Map
+
+| Directory | Source of Truth | Description |
+|-----------|-----------------|-------------|
+| [basic-memory/](basic-memory/) | `basic-memory.org` | Shared AI memory backend (MCP) |
+| [doom/](doom/) | `config.org`, `init.org` | Doom Emacs user layer |
+| [kanata/](kanata/) | `kanata.org` | Keyboard layer stack and home-row mods |
+| [komorebi/](komorebi/) | `komorebi.org` | Tiling window manager and status bar |
+| [wezterm/](wezterm/) | `wezterm.org` | Primary terminal emulator |
+| [wtq/](wtq/) | `wtq.org` | Drop-down terminal overlay geometry |
+| [powershell/](powershell/) | `powershell.org` | Interactive shell profile and aliases |
+| [scripts/](scripts/) | `scripts.org` | System-wide helper scripts |
+| [starship/](starship/) | `starship.org` | Cross-shell prompt renderer |
+| [espanso/](espanso/) | `espanso.org` | Text expansion and snippets |
+
+## The Workflow
+
+The system follows a strict **Edit -> Tangle -> Reload** loop.
+
+1. **Edit:** Modify the relevant `.org` file (e.g. `kanata.org`). Do not edit generated files directly.
+2. **Tangle:** Run `tangle all` from the shell, or let Emacs automatically tangle on save. This exports the code blocks into real config files.
+3. **Reload:** Restart the affected service.
+
+## Related
+
+- [CONTRIBUTING.org](CONTRIBUTING.org) — New-machine bootstrap checklist

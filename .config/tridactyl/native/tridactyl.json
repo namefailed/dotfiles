@@ -1,0 +1,11 @@
+{
+  "name": "tridactyl",
+  "description": "Tridactyl native command handler",
+  "path": "native_main.exe",
+  "type": "stdio",
+  "allowed_extensions": [
+    "tridactyl.vim@cmcaine.co.uk",
+    "tridactyl.vim.betas@cmcaine.co.uk",
+    "tridactyl.vim.betas.nonewtab@cmcaine.co.uk"
+  ]
+}

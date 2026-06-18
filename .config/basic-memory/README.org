@@ -1,0 +1,94 @@
+#+title:      Basic Memory — Shared AI Memory Backend
+#+date:       [2026-05-16 Fri]
+#+filetags:   :config:ai:memory:
+
+* Overview
+
+Basic Memory is a local, offline memory backend shared across all AI coding
+assistants: Claude Code, Cursor, Windsurf, VS Code Copilot, and OpenCode.
+Every memory is a plain Markdown file in =~/basic-memory/=. AI agents write and
+read using MCP tools (=write_note=, =search_notes=, =build_context=, etc.).
+
+* Files
+
+- =basic-memory.org= — Literate configuration (MCP server config, bootstrap scripts)
+- =start-basic-memory-server.ps1= — Login helper (tangled from [[file:../scripts/scripts.org][scripts.org]])
+- =startup-orchestrator.vbs= — Startup orchestrator (Group 1 at logon, tangled from [[file:../scripts/scripts.org][scripts.org]])
+
+* Architecture
+
+#+begin_example
+         ┌─────────────────────────────────────────┐
+         │  basic-memory mcp                       │
+         │    --transport streamable-http          │
+         │    --host 127.0.0.1 --port 8765         │
+         │  (one background process, starts at     │
+         │   login via VBS in Startup folder)      │
+         │  Data:  ~/basic-memory/                 │
+         └────────────┬────────────────────────────┘
+                      │ HTTP (MCP protocol)
+          ┌───────────┼───────────┐
+          │           │           │
+     Claude Code  Cursor    Windsurf / VS Code
+#+end_example
+
+* Clients
+
+| Client | Config Path |
+|--------+-------------|
+| Claude Code | =claude/settings.json= |
+| Cursor | =~/.config/cursor/mcp.json= (copy to =%APPDATA%\Code\User\mcp.json=) |
+| Windsurf | Windsurf MCP settings UI |
+| VS Code | =%APPDATA%\Code\User\mcp.json= |
+| OpenCode | =~/.config/opencode/opencode.json= |
+
+* Venv
+
+- Python: =%APPDATA%\uv\tools\basic-memory\Scripts\python.exe=
+- Run CLI: =uv tool run basic-memory tool <subcommand>=
+- Non-interactive bypass: use the venv Python directly when =uv= trampoline fails
+
+* Shell Aliases
+
+Defined in [[file:../powershell/powershell.org][powershell.org]]:
+
+| Alias | Action |
+|-------+--------|
+| =basic-memory= | Start Basic Memory MCP on :8765 |
+| =deploy-startup= | Deploy login orchestrator VBS (see [[file:../scripts/README.org][scripts README]]) |
+
+* Org Safety
+
+Org files are never modified by Basic Memory. Pandoc reads them as input and
+writes new Markdown files into =~/basic-memory/bootstrap/=. Deleting
+=~/basic-memory/= has no effect on the original org notes.
+
+* Directory Layout
+
+| Directory | Purpose |
+|-----------+---------|
+| =bootstrap/= | Agent bootstrap notes (auto-generated from Denote org files) |
+| =config/= | Client-specific config notes |
+| =projects/= | Project context notes |
+| =reference/= | Reference notes (system state, tool docs, audit logs) |
+
+* Backup
+
+=~/basic-memory/= is a git repository with remote at =github.com/namefailed/basic-memory=.
+=.gitattributes= enforces LF line endings to prevent CRLF issues.
+
+* Reload
+
+After editing =basic-memory.org=, tangle it. MCP config changes require
+restarting the server: =basic-memory= or restart the VBS startup task.
+
+* PKM (Documents/org)
+
+- Denote: [[file:../../../../Documents/org/notes/tools/20260514T210000--basic-memory__tools_reference_ai.org][Basic Memory]] (=20260514T210000=)
+- Login chain: [[file:../../../../Documents/org/notes/tools/20260509T122100--scripts__tools_reference.org][Scripts]] — =startup-orchestrator.vbs=
+- Tangle: =tangle basic-memory= (MCP snippets); startup VBS from =tangle scripts=
+
+* Related
+
+- [[file:../scripts/README.org][Scripts]] — =start-basic-memory-server.ps1=
+- [[file:../powershell/README.org][PowerShell]] — =basic-memory= alias

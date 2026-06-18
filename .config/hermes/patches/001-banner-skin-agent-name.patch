@@ -1,0 +1,26 @@
+diff --git a/hermes_cli/banner.py b/hermes_cli/banner.py
+index f25d03d2a..5b509c5c9 100644
+--- a/hermes_cli/banner.py
++++ b/hermes_cli/banner.py
+@@ -401,9 +401,20 @@ def get_latest_release_tag(repo_dir: Optional[Path] = None) -> Optional[tuple]:
+     return _latest_release_cache
+ 
+ 
++def _get_agent_name_from_skin() -> str:
++    """Read the agent_name branding from the active skin, or fall back."""
++    try:
++        from hermes_cli.skin_engine import get_active_skin
++        skin = get_active_skin()
++        return skin.get_branding("agent_name", "Hermes Agent") or "Hermes Agent"
++    except Exception:
++        return "Hermes Agent"
++
++
+ def format_banner_version_label() -> str:
+     """Return the version label shown in the startup banner title."""
+-    base = f"Hermes Agent v{VERSION} ({RELEASE_DATE})"
++    agent_name = _get_agent_name_from_skin()
++    base = f"{agent_name} v{VERSION} ({RELEASE_DATE})"
+     state = get_git_banner_state()
+     if not state:
+         return base

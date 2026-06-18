@@ -1,0 +1,69 @@
+#+title:      Scripts
+#+date:       [2026-05-13 Tue]
+#+filetags:   :config:
+
+Automation scripts for the Windows desktop stack. Flat layout under
+=~/.config/scripts/= (no =scripts/powershell/= prefix).
+
+* Files
+
+- =scripts.org= — Literate source for all scripts; tangle with =tangle scripts=
+- =_lib/config-paths.ps1= — Shared path helpers (=ConfigScriptsRoot= → =scripts/=)
+- =kanata/=, =komorebi/=, =remote/=, =basic-memory/=, =phoneme/=, =startup/=, =utility/=, =wtq/= — Active scripts
+- =archive/= — Superseded scripts (AHK/WHKD era, retired drift check, org-protocol installer)
+
+* Directory layout
+
+#+begin_example
+~/.config/scripts/
+  _lib/           config-paths.ps1
+  kanata/         Kanata-invoked launchers
+  komorebi/       Window manager helpers + VBS wrappers
+  remote/         SSH, ttyd, Tailscale
+  basic-memory/   MCP server, cron, export
+  phoneme/        dev-phoneme stack launcher
+  startup/        startup-orchestrator.vbs → deploy-startup (admin)
+  utility/        tangle, drift check, PKM verify, org-capture
+  wtq/            Howm dropdown launcher
+  archive/        Retired scripts
+#+end_example
+
+* Configuration
+
+Edit =scripts.org=, then =tangle scripts= (or =M-x org-babel-tangle= on =scripts.org=).
+Never edit generated =.ps1= / =.vbs= directly unless unblocking an emergency (re-tangle after).
+
+* Portability
+
+- =ConfigScriptsRoot= in [[file:_lib/config-paths.ps1][config-paths.ps1]] is =~/.config/scripts=
+- Profile forces the same path after dot-sourcing =config-paths.ps1=
+- After tangling =startup-orchestrator.vbs=, redeploy: =deploy-startup= (admin)
+
+* Shell aliases
+
+Defined in [[file:../powershell/powershell.org][powershell.org]]:
+
+| Alias | Script |
+|-------+--------|
+| =tangle= / =tangle all= | Batch or single-org tangle |
+| =tangle-check= | =utility/verify-org-tangle-sync.ps1= |
+| =tangle-validate= | =utility/tangle-configs.ps1 -Validate= |
+| =basic-memory= | =basic-memory/start-basic-memory-server.ps1= |
+| =deploy-startup= | Copy =startup/startup-orchestrator.vbs= to ProgramData |
+| =webterm= | =remote/ttyd-toggle.ps1= |
+| =bm-docs= | =basic-memory/export-basic-memory-docs.ps1= |
+| =pkm-check= | =utility/verify-pkm-integrity.ps1= |
+| =dev-phoneme= | =phoneme/start-phoneme-dev.ps1= |
+
+* PKM (Documents/org)
+
+- Denote: [[file:../../../../Documents/org/notes/tools/20260509T122100--scripts__tools_reference.org][Scripts]] (=20260509T122100=)
+- Maintenance: [[file:../../../../Documents/org/notes/tools/20260520T120000--config-maintenance-and-tangle-workflow__tools_reference.org][Config Maintenance]]
+- Portability: [[file:../../../../Documents/org/notes/tools/20260519T120000--config-portability-and-path-conventions__tools_reference.org][Config Portability]]
+
+* Related
+
+- [[file:../kanata/README.org][Kanata]]
+- [[file:../komorebi/README.org][Komorebi]]
+- [[file:../wtq/README.org][WTQ]]
+- [[file:../wezterm/wezterm.org][WezTerm]]

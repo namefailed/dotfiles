@@ -1,0 +1,46 @@
+#+title:      Git Configuration
+#+date:       [2026-05-16 Fri]
+#+filetags:   :config:git:
+
+* Overview
+
+=git.org= is the source of truth for the active global Git profile. It tangles
+to =gitconfig=, which the Git runtime consumes through the =~/.gitconfig=
+home-path symlink.
+
+* Files
+
+- =git.org= -- source of truth
+- =gitconfig= -- tangled global Git config
+- =~/.gitconfig= -- symlink to the tangled file (Git reads this path)
+
+* Active Settings
+
+- **User**: =grey= / =***@***.***= (see tangled =config= for runtime value)
+- **Credential helper**: GitHub CLI (=gh auth git-credential=) for =github.com= and =gist.github.com=
+- No hardcoded tokens — all auth flows through the GitHub CLI credential helper
+
+* Rust Toolchain Paths
+
+Rustup and Cargo use XDG-style paths set as permanent environment variables:
+
+- =RUSTUP_HOME= → =%USERPROFILE%\.local\share\rustup=
+- =CARGO_HOME= → =%USERPROFILE%\.local\share\cargo=
+
+The =cargo\bin= directory is on the system PATH. Old =~/.rustup/= and =~/.cargo/=
+directories have been removed after migration.
+
+* Reload
+
+After editing =git.org=, tangle it. Git picks up the updated =~/.gitconfig=
+automatically on the next command invocation.
+
+* PKM (Documents/org)
+
+- Denote: [[file:../../../../Documents/org/notes/tools/20260514T032300--git-windows-setup__tools_reference.org][Git (Windows Setup)]] (=20260514T032300=)
+- Tangle: =tangle git=
+
+* Related
+
+- [[file:../README.org][~/.config/README.org]] — full system map
+- [[file:../powershell/README.org][PowerShell]] — =bash= and =doom= wrappers for Git Bash

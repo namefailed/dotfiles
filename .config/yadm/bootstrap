@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# yadm bootstrap — runs on a fresh machine after `yadm clone <url>`.
+# https://yadm.io/docs/bootstrap
+set -euo pipefail
+
+echo "[yadm bootstrap] Install toolchain (winget), then from PowerShell:"
+echo "  tangle all"
+echo "  tangle kanata          # generates kanata.kbd (not in git)"
+echo "  tangle-check"
+echo "  # Copy startup-orchestrator.vbs to ProgramData Startup (admin)"
+echo "  # doom install + doom sync; clone ~/Documents/org and ~/basic-memory"
+echo "See ~/.config/CONTRIBUTING.org for the full checklist."

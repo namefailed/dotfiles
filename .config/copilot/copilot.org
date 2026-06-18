@@ -1,0 +1,19 @@
+#+title:      copilot Configuration & State
+#+date:       [2026-05-19 Mon]
+#+filetags:   :config:state:copilot:
+
+* Overview
+
+This directory contains machine-local state and/or configuration for copilot.
+It was relocated to ~/.config/copilot on 2026-05-19 as part of the home-root consolidation.
+
+* Relocation Mechanism
+Relocated via an NTFS directory junction (mklink /J) from ~/.copilot to ~/.config/copilot.
+This allows the tool to seamlessly read/write to the standard XDG path without native support.
+* yadm Tracking
+
+The contents of this directory are primarily machine-local state (caches, SQLite databases, logs, extensions) and are **excluded** from yadm tracking via .gitignore.
+Only this .org file is explicitly tracked.
+
+* Related
+- [[denote:20260519T120000][Config Portability and Path Conventions]]

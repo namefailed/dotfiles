@@ -1,0 +1,66 @@
+{
+  "font_family": "CaskaydiaCove NFM",
+  "font_size": 12,
+  "height": 32,
+  "padding": 8,
+  "widget_spacing": 10,
+  "transparency_alpha": 235,
+  "theme": {
+    "palette": "Catppuccin",
+    "name": "Mocha",
+    "accent": "Pink"
+  },
+  "left_widgets": [
+    {
+      "Komorebi": {
+        "workspaces": {
+          "enable": true,
+          "hide_empty_workspaces": false,
+          "active_workspace_icon": "",
+          "workspace_icon": ""
+        }
+      }
+    },
+    {
+      "Komorebi": {
+        "focused_window": {
+          "enable": true,
+          "show_icon": true
+        }
+      }
+    }
+  ],
+  "right_widgets": [
+    {
+      "Update": {
+        "enable": true
+      }
+    },
+    {
+      "Media": {
+        "enable": true,
+        "show_artist": true,
+        "show_title": true
+      }
+    },
+    {
+      "Storage": {
+        "enable": false,
+        "show_used": true,
+        "show_total": false
+      }
+    },
+    {
+      "Cpu": {
+        "enable": true,
+        "show_percentage": true
+      }
+    },
+    {
+      "Memory": {
+        "enable": true,
+        "show_percentage": true
+      }
+    }
+  ]
+}

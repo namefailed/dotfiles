@@ -1,0 +1,78 @@
+name: hermes
+description: "Greek messenger theme — sky blue, divine gold, and swift as thought"
+
+colors:
+  banner_border: "#3B6EA5"
+  banner_title: "#7FB3E0"
+  banner_accent: "#D4AF37"
+  banner_dim: "#5C6B7A"
+  banner_text: "#E8ECF2"
+  ui_accent: "#D4AF37"
+  ui_label: "#B8860B"
+  ui_ok: "#4caf50"
+  ui_error: "#ef5350"
+  ui_warn: "#ffa726"
+  prompt: "#E8ECF2"
+  input_rule: "#3B6EA5"
+  response_border: "#3B6EA5"
+  status_bar_bg: "#0F1A30"
+  status_bar_text: "#E8ECF2"
+  status_bar_strong: "#7FB3E0"
+  status_bar_dim: "#5C6B7A"
+  status_bar_good: "#63D0A6"
+  status_bar_warn: "#D4AF37"
+  status_bar_bad: "#C9902E"
+  status_bar_critical: "#FF6B6B"
+  session_label: "#D4AF37"
+  session_border: "#5C6B7A"
+  voice_status_bg: "#0F1A30"
+  selection_bg: "#1A365D"
+  completion_menu_bg: "#0F1A30"
+  completion_menu_current_bg: "#1A365D"
+  completion_menu_meta_bg: "#0A1425"
+  completion_menu_meta_current_bg: "#142A4A"
+
+spinner:
+  waiting_faces:
+    - "(⚕)"
+    - "(🪽)"
+    - "(⟡)"
+    - "(✦)"
+    - "(≈)"
+  thinking_faces:
+    - "(⚕)"
+    - "(✦)"
+    - "(⟡)"
+    - "(⌁)"
+    - "(🪽)"
+  thinking_verbs:
+    - "bearing messages"
+    - "donning winged sandals"
+    - "crossing the sky"
+    - "reading the omens"
+    - "consulting the fates"
+    - "weaving words"
+    - "measuring the wind"
+    - "charting swift paths"
+  wings:
+    - ["⟪🪽", "🪽⟫"]
+    - ["⟪≈", "≈⟫"]
+    - ["⟪✦", "✦⟫"]
+    - ["⟪⟡", "⟡⟫"]
+
+branding:
+  agent_name: "Hermes"
+  welcome: "Hermes — swift and ready 🪽"
+  goodbye: "May Hermes guide your path! 🪽"
+  response_label: " 🪽 Hermes "
+  prompt_symbol: "🪽"
+  help_header: "(🪽) Commands of the Herald"
+
+tool_prefix: "┊"
+
+tool_emojis:
+  web_search: "🔮"
+  browser: "🌐"
+  terminal: "⚡"
+  memory: "🧠"
+  delegate_task: "☿"

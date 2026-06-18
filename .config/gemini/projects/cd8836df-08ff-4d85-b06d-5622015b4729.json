@@ -1,0 +1,20 @@
+{
+  "id":  "cd8836df-08ff-4d85-b06d-5622015b4729",
+  "name":  "flowlauncher-vim-fork",
+  "projectResources":  {
+    "resources":  [
+      {
+        "gitFolder":  {
+          "folderUri":  "file:///c%3A/Users/Namef/Projects/dev/flowlauncher-vim-fork",
+          "defaultBranch":  "master"
+        }
+      }
+    ]
+  },
+  "settings":  {
+    "fileAccessPolicy":  "AGENT_SETTING_POLICY_ALLOW",
+    "internetPolicy":  "AGENT_SETTING_POLICY_ASK",
+    "autoExecutionPolicy":  "CASCADE_COMMANDS_AUTO_EXECUTION_EAGER",
+    "artifactReviewMode":  "ARTIFACT_REVIEW_MODE_ALWAYS"
+  }
+}

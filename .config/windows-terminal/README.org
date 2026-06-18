@@ -1,0 +1,56 @@
+#+title:      Windows Terminal
+#+date:       [2026-05-13 Tue]
+#+filetags:   :config:terminal:
+
+* Overview
+
+=windows-terminal.org= is the source of truth and tangles to =settings.json=.
+The setup keeps PowerShell 7 as the default profile, uses Catppuccin Mocha,
+enables acrylic for the active PowerShell profiles, and adds Vim-like tab/pane
+navigation.
+
+* Files
+
+- =windows-terminal.org= -- source of truth
+- =settings.json= -- tangled terminal settings
+
+* Profiles
+
+- =PowerShell 7= -- default profile, acrylic enabled, opacity =60=
+- =PowerShell= -- visible profile, acrylic enabled
+- =Windows PowerShell= -- hidden
+- =Command Prompt= -- hidden
+- =Azure Cloud Shell= -- hidden
+
+* Appearance
+
+- Color scheme: =Catppuccin Mocha=
+- Font: =CaskaydiaCove Nerd Font Mono= at size =13=
+- Padding: =16,8,8,8=
+- Cursor shape: =filledBox=
+- Scrollbar: hidden
+- Tab row acrylic compatibility is enabled for unfocused windows
+
+* Keybindings
+
+- =Ctrl+t= -- new tab
+- =Ctrl+Shift+d= -- duplicate pane
+- =Ctrl+c= / =Ctrl+v= -- copy / paste
+- =Ctrl+h= or =Ctrl+,= -- previous tab
+- =Ctrl+l= or =Ctrl+.= -- next tab
+- =Ctrl+Shift+h= or =Ctrl+Shift+,= -- move tab backward
+- =Ctrl+Shift+l= or =Ctrl+Shift+.= -- move tab forward
+- =Ctrl+Alt+h/j/k/l= -- move focus between panes
+- =Ctrl+\= -- split pane right
+- =Ctrl+-= -- split pane down
+- =Ctrl+q= -- close pane
+- =Shift+Enter= -- send Escape + Enter
+- =Ctrl+0= through =Ctrl+9= -- switch to tabs 9 then 0-8
+
+* Reload
+
+After editing =windows-terminal.org=, =tangle windows-terminal= and restart Windows Terminal.
+
+* PKM (Documents/org)
+
+- Denote: [[file:../../../../Documents/org/notes/tools/20260509T041200--windows-terminal__tools_reference.org][Windows Terminal]] (=20260509T041200=)

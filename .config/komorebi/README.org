@@ -1,0 +1,98 @@
+#+title:      Komorebi Window Manager
+#+date:       [2026-05-13 Tue]
+#+filetags:   :config:window-manager:
+
+* Overview
+
+Komorebi is the tiling window manager for this desktop. =komorebi.org= is the
+source of truth and tangles to both =komorebi.json= and =komorebi.bar.json=.
+
+* Files
+
+- =komorebi.org= -- source of truth
+- =komorebi.json= -- main WM config
+- =komorebi.bar.json= -- bar layout
+- =applications.json= -- upstream per-app catalog consumed by Komorebi
+
+* Core Behavior
+
+- Window hiding uses =Cloak=
+- Cross-monitor moves use =Insert=
+- Workspace padding and container padding are both =0=
+- Active window border is enabled with =border_width: 5= and =border_offset: -1=
+- Theme is =Catppuccin Mocha= with =Pink= bar accent
+
+* Workspaces
+
+Seven fixed workspaces (4 Grid + 3 scrolling):
+
+1. =browse= — Grid
+2. =write= — Grid
+3. =code= — Grid
+4. =ops= — Grid
+5. =cowork= — Scrolling, 2 columns
+6. =social= — Scrolling, 2 columns
+7. =focus= — Scrolling, 1 column
+
+Initial rules route a fixed set of apps at launch (=firefox.exe= / Obsidian + journal /
+main - code / terminals / Claude + Cursor + Codex / social stack).
+File Explorer and Copilot are *not* auto-routed; they appear on the workspace
+already focused.
+
+The =code= workspace stays reserved for the dedicated =main - code= frame opened by
+=LWin+Enter=; other Emacs frames stay on the workspace where they are created.
+
+* Rules
+
+Ignored windows:
+
+- =WindowsTerminal.exe=
+- =wtq.exe=
+- IME helper windows such as =MSCTFIME UI= and =Default IME=
+- =mscopilot.exe= — =ignore_rules= (Equals + Regex for casing) and compound =Chrome_WidgetWin_1=
+- =floating_applications= — same Copilot identification (float on workspace, not BSP)
+- =ApplicationFrameHost.exe= when the title contains =Copilot= (alternate shell)
+
+Explicitly managed windows:
+
+- =claude.exe=
+- =ApplicationFrameHost.exe= when the title contains =Claude=
+
+Layered applications:
+
+- =Cursor.exe=
+
+* Bar Behavior
+
+The =komorebi-bar= layout uses:
+
+- =CaskaydiaCove NFM=
+- size =12=
+- height =32=
+- transparency alpha =235=
+- left widgets: layout, workspaces, focused window
+- right widgets: Update, Media, Storage (disabled), Cpu, Memory
+
+The =LAlt + b= binding runs =scripts/komorebi/toggle-komorebi-bar.ps1=. That
+script toggles the bar, rewrites WTQ =VerticalOffset= between =30= and =0=, and
+restarts both Komorebi and WTQ so the work area stays aligned.
+
+* Reload
+
+For most config-only changes:
+
+#+begin_example
+komorebic reload-configuration
+#+end_example
+
+For monitor or workspace structure changes:
+
+#+begin_example
+komorebic stop
+komorebic start --ffm --bar
+#+end_example
+
+* PKM (Documents/org)
+
+- Denote: [[file:../../../../Documents/org/notes/tools/20260509T040300--komorebi__tools_reference.org][Komorebi]] (=20260509T040300=)
+- Tangle: =tangle komorebi=

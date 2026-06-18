@@ -1,0 +1,88 @@
+#+title:      Tridactyl Configuration
+#+date:       [2026-05-13 Tue]
+#+filetags:   :config:browser:
+
+* Overview
+
+=tridactyl.org= is the source of truth and tangles to both =.tridactylrc= and
+=native/tridactyl.json=. The goal
+is keyboard-first Firefox navigation with home-row hints, Vim-style scrolling,
+tab/history control, strong yank helpers, a broad default hint-action set, and
+a few site-specific overrides.
+
+* Files
+
+- =tridactyl.org= -- source of truth
+- =.tridactylrc= -- tangled config consumed by Tridactyl
+- =native/tridactyl.json= -- tangled native messenger manifest
+
+* Core Settings
+
+- Theme: =midnight=
+- Hint characters: =asdfghjkl=
+- Hint filter mode: =vimperator-reflow=
+- Hint auto-select: enabled
+- Hint delay: =50=
+- New tabs open to =about:blank=
+- Autofocus stealing is disabled
+- Search completions source is disabled
+
+* Navigation
+
+- =d= / =u= -- page down / page up
+- =h= / =l= -- horizontal scroll
+- =j= / =k= and =gg= / =G= -- linewise and absolute top/bottom scrolling
+- =J= / =K= -- page history back / forward
+- =H= / =L= -- previous / next tab
+- =o= / =w= / =b= / =B= / =:= -- open, window-open, tab switch, tab-all, and ex prompt entry
+- =T= -- open the tab-open command line
+- =td= / =tn= / =tw= -- duplicate / new / detach tab
+- =N= / =O= -- reopen current URL in a new tab or current tab
+
+* Hint Actions
+
+- =f= / =F= / =gF= -- open hinted links in current, background, or multi background mode
+- =;*= / =;g*= families -- the broader Tridactyl hint actions for copy/open/save/queue flows
+- =;Y= -- yank image to clipboard
+- =;m= / =;M= -- open hinted image in Google Lens
+- =;c= -- click expand/toggle style UI elements
+
+* Clipboard and URL Helpers
+
+- =yy= -- yank canonical URL
+- =ys= -- yank shortened URL
+- =yc= -- yank canonical URL after resolution
+- =ym= -- yank Markdown link
+- =yo= -- yank Org link to clipboard
+- =yl= -- capture page to bottom of today's journal Log (org-protocol; Emacs daemon required; matches s keybind format)
+- =yt= -- capture page as TODO at bottom of today's journal Tasks (org-protocol template =jt=; matches S keybind format)
+- =yq= -- generate QR code from the current URL
+- =yg= -- build a =git clone= command from the current URL
+
+* Search Prefixes and Aliases
+
+- =gsa=, =gsg=, =gsw=, =gsy=, =gss=, =gsm=, =gse= prefill common searches
+- aliases include =translate=, =current_url=, =stop=, =mpvsafe=, and =reibadailty=
+
+* Site-Specific Overrides
+
+- Google: custom hint selectors, explicit next/prev pagination labels, autofocus disabled
+- WhatsApp Web: custom hint selectors for the dynamic chat UI
+- Teams: mode indicator hidden on =teams.microsoft.com= and =teams.live.com=
+
+* Reload
+
+In Firefox, reload with:
+
+#+begin_example
+:source ~/.config/tridactyl/.tridactylrc
+#+end_example
+
+The native manifest does not need a separate reload step unless the native host
+installation itself changes.
+
+* PKM (Documents/org)
+
+- Denote: [[file:../../../../Documents/org/notes/programming/20240310T000000--exploring-tridactyl-vim-like-browser-navigation__programming_reference.org][Tridactyl]] (=20240310T000000=)
+- Tangle: =tangle tridactyl=
+- Browser capture: [[file:../../../../Documents/org/notes/pkm/20260517T120000--browser-journal-capture-org-protocol__pkm_reference.org][Browser Journal Capture]]

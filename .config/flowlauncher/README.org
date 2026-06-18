@@ -1,0 +1,74 @@
+#+title:      Flow Launcher
+#+date:       [2026-05-13 Tue]
+#+filetags:   :config:launcher:
+
+* Overview
+
+Flow Launcher is the keyboard-first app launcher for Windows. The literate
+source is =flowlauncher.org= and it tangles to =settings/Settings.json=. The
+runtime file under =%APPDATA%\FlowLauncher\Settings\Settings.json= should
+resolve back to that generated file so the launcher consumes the same config
+that lives in =.config=.
+
+* Files
+
+- =flowlauncher.org= -- source of truth
+- =settings/Settings.json= -- tangled main config (tracked)
+- =settings/Plugins/**/Settings.json= -- **gitignored** (per-plugin UI state; edit in Flow Launcher UI)
+- =%APPDATA%\FlowLauncher\Settings\Settings.json= -- runtime symlink target
+
+* Core Behavior
+
+- Hotkey: =Ctrl+Space=
+- Search window opens at the cursor, center-aligned
+- Theme: =Catppuccin Mocha=
+- Result list keeps 4 visible items; delayed query results are disabled and the
+  configured delay value remains =150 ms=
+- Startup: enabled, hidden on login, hides again when deactivated
+
+* Custom Applications
+
+** Explorers
+
+- =Explorer=
+- =Total Commander=
+- =Directory Opus=
+- =Files=
+
+** Browsers
+
+- =Default=
+- =Google Chrome=
+- =Mozilla Firefox= (selected default)
+- =MS Edge=
+
+* Plugin Keywords
+
+Dedicated keywords configured in the main settings:
+
+- =cb= -- Clipboard History
+- =?= -- Plugin Indicator
+- =pm= -- Plugins Manager
+- =kill= -- Process Killer
+- =gh= -- GitHub
+- =yt= -- FlowYouTube
+- =ptoys= -- PowerToys
+- =rp= -- RemovePaywall
+- =z= -- Zoxide
+- =s= -- Windows Settings
+
+Wildcard-driven plugins also remain enabled for general search and command use:
+=Calculator=, =Explorer=, =Program=, =Shell=, =System Commands=, =URL=,
+=Web Searches=, and =Win Hotkey=.
+
+Selected plugin runtime files under =settings/Plugins/= are also managed from
+=flowlauncher.org=. Token-bearing or history-heavy plugin files are left
+unmanaged.
+
+* Reload
+
+After editing =flowlauncher.org=, =tangle flowlauncher= and restart Flow Launcher.
+
+* PKM (Documents/org)
+
+- Denote: [[file:../../../../Documents/org/notes/tools/20260509T041400--flow-launcher__tools_reference.org][Flow Launcher]] (=20260509T041400=)

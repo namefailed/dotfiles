@@ -1,0 +1,4 @@
+1|*.bak
+2|
+# FlowLauncher runtime files
+.config/flowlauncher/settings/*

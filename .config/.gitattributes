@@ -1,0 +1,26 @@
+# Ensure LF line endings for all text files
+* text=auto
+
+# Org files MUST stay LF (Emacs requirement)
+*.org text eol=lf
+
+# PowerShell scripts MUST stay LF
+*.ps1 text eol=lf
+*.psm1 text eol=lf
+*.psd1 text eol=lf
+
+# Emacs Lisp files MUST stay LF
+*.el text eol=lf
+
+# Shell scripts MUST stay LF
+*.sh text eol=lf
+*.vbs text eol=lf
+
+# Binary files - no conversion
+*.dll binary
+*.exe binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdb binary
+*.woff2 binary

@@ -1,0 +1,9 @@
+{
+  "model": "gpt-3.5-turbo",
+  "default_prompt": "normal",
+  "save_conversation": false,
+  "log_level": "error",
+  "api_key": "",
+  "api_endpoint": "https://api.openai.com/v1/chat/completions",
+  "prompt_stop": "||"
+}

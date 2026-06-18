@@ -1,0 +1,51 @@
+
+# Cache / runtime dirs
+.cache/
+basic-memory/data/
+basic-memory/server.log
+copilot/installed-plugins/
+copilot/command-history-state.json
+copilot/session-state/
+copilot/session-store.db
+copilot/vscode.session.metadata.cache.json
+emacs/.local/
+emacs/eln-cache/
+emacs/etc/
+gemini/antigravity/
+gemini/oauth_creds.json
+gemini/google_accounts.json
+gemini/installation_id
+gemini/tmp/
+hermes/sessions/
+hermes/logs/
+hermes/cron/
+hermes/memories/
+hermes/auth.json
+hermes/state.db*
+hermes/kanban.db*
+hermes/.env
+hermes/auth/
+hermes/cache/
+hermes/image_cache/
+hermes/audio_cache/
+hermes/.hermes_history
+hermes/sandboxes/
+himalaya/config.toml
+opencode/node_modules/
+ollama/cache/
+ollama/models/
+ollama/env.ps1
+scripts/startup-rollback.json
+
+# Kiro runtime sessions
+kiro/sessions/
+
+# Installed PowerShell modules (reinstall via Install-Module, not user config)
+powershell/Modules/
+
+# Binary shortcut files (embed absolute paths)
+*.lnk
+*.bak
+tailscale/
+vscode/extensions/
+windsurf/

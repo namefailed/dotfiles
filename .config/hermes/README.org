@@ -1,0 +1,29 @@
+#+title:      Hermes Agent
+#+date:       [2026-05-20 Tue]
+#+filetags:   :config:ai:hermes:
+
+* Overview
+
+[[https://github.com/NousResearch/hermes-agent][Hermes Agent]] config lives here (=HERMES_HOME=).
+Upstream code installs to =%LOCALAPPDATA%\hermes\hermes-agent\=.
+
+* Files
+
+| File | Role |
+|------+------|
+| [[file:hermes.org][hermes.org]] | Literate source → =config.yaml=, =.gitignore= |
+| =config.yaml= | Tangled runtime config (do not edit directly) |
+| =.env.example= | Secret placeholders — copy to =.env= |
+| =.env= | **Local secrets only** (gitignored) |
+
+* Workflow
+
+1. Edit [[file:hermes.org][hermes.org]]
+2. =tangle hermes=
+3. Copy =.env.example= → =.env= on new machines; rotate keys if exposed
+4. Restart Hermes
+
+* yadm
+
+Tracked: =hermes.org=, =config.yaml=, =.gitignore=, this README.
+Excluded: =sessions/=, =logs/=, =.env=, caches (see tangled =.gitignore=).

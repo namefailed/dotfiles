@@ -1,0 +1,30 @@
+#+title:      GitHub CLI
+#+date:       [2026-05-21 Thu]
+#+filetags:   :config:git:cli:
+#+PROPERTY:   header-args:yaml :tangle config.yml :mkdirp yes
+#+OPTIONS:    toc:2 num:nil broken-links:mark
+#+STARTUP:    overview
+
+#+begin_quote
+⚠ *DO NOT EDIT =config.yml= DIRECTLY.*
+
+This =gh.org= file is the source of truth for =gh= CLI configuration.
+Edit here, tangle with =tangle gh=, then run =gh auth status= to verify.
+#+end_quote
+
+* Git Protocol
+
+Use SSH for authenticated Git operations.
+
+#+begin_src yaml :tangle config.yml
+# GitHub CLI configuration (XDG: ~/.config/gh/config.yml)
+git_protocol: ssh
+#+end_src
+
+* Overview & Architecture
+
+gh is the official GitHub CLI tool.
+
+**Design Philosophy**
+
+We use gh extensively for managing PRs, issues, and authentication without leaving the terminal. It acts as the primary credential helper for Git, ensuring secure, token-based authentication seamlessly integrates with the Windows credential manager.

@@ -1,0 +1,26 @@
+{
+  "userSettings": {
+    "globalPermissionGrants": {
+      "allow": [
+        "command(powershell)",
+        "mcp(basic-memory/list_workspaces)",
+        "mcp(basic-memory/recent_activity)",
+        "mcp(basic-memory/release_notes)",
+        "mcp(basic-memory/write_note)",
+        "command(Get-Command)",
+        "command(C:\\Users\\Namef\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\hermes.exe)",
+        "command(C:\\Users\\Namef\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\hermes.exe)",
+        "command(C:\\Users\\Namef\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\hermes.exe)",
+        "command(Get-Content)",
+        "command(C:\\Users\\Namef\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\hermes.exe)",
+        "mcp(basic-memory/edit_note)",
+        "read_url(dev.to)",
+        "mcp(basic-memory/search_notes)",
+        "mcp(basic-memory/read_note)",
+        "mcp(basic-memory/list_memory_projects)",
+        "mcp(basic-memory/list_directory)",
+        "read_url(raw.githubusercontent.com)"
+      ]
+    }
+  }
+}

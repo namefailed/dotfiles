@@ -1,0 +1,1426 @@
+#+title:      PowerShell Profile
+#+date:       [2026-05-13 Tue]
+#+filetags:   :config:shell:
+#+PROPERTY:   header-args:powershell :tangle Microsoft.PowerShell_profile.ps1 :mkdirp yes
+#+OPTIONS:    toc:2 num:nil broken-links:mark
+#+STARTUP:    overview
+
+#+begin_quote
+⚠ *DO NOT EDIT =Microsoft.PowerShell_profile.ps1= DIRECTLY.*
+
+This =powershell.org= file is the source of truth. Edit here, then tangle with
+=tangle powershell= (or =M-x org-babel-tangle=) and reload with =. $PROFILE= or
+restart your shell for changes to take effect.
+#+end_quote
+
+* Generated File Header                                             :noexport:
+
+This block is the first thing tangled into =Microsoft.PowerShell_profile.ps1=.
+It produces the descriptive banner at the top of the deployed file.
+
+#+begin_src powershell
+# =============================================================================
+# PowerShell Profile - Fast, Minimal, Catppuccin-Themed
+# =============================================================================
+
+Set-StrictMode -Version Latest
+
+$script:ModuleAvailableCache = @{}
+$script:CommandAvailableCache = @{}
+
+#+end_src
+
+* Overview
+
+Fast, minimal, Catppuccin-themed PowerShell profile with optimized module loading,
+PSReadLine configuration, custom functions, and CLI tool integration.
+
+* Performance Optimizations
+
+** Module Availability Caching
+
+Cache module and command availability checks to reduce repeated startup overhead.
+Scripts use these to lazy-load heavy modules only when needed.
+
+#+begin_src powershell
+function Test-Module {
+    param([Parameter(Mandatory)][string]$Name)
+    if (-not $script:ModuleAvailableCache) { $script:ModuleAvailableCache = @{} }
+    if ($script:ModuleAvailableCache.ContainsKey($Name)) { return $script:ModuleAvailableCache[$Name] }
+
+    $exists = $null -ne (Get-Module -ListAvailable -Name $Name)
+    $script:ModuleAvailableCache[$Name] = $exists
+    return $exists
+}
+
+function Test-Command {
+    param([Parameter(Mandatory)][string]$Name)
+    if (-not $script:CommandAvailableCache) { $script:CommandAvailableCache = @{} }
+    if ($script:CommandAvailableCache.ContainsKey($Name)) { return $script:CommandAvailableCache[$Name] }
+
+    $exists = $null -ne (Get-Command $Name -ErrorAction SilentlyContinue)
+    $script:CommandAvailableCache[$Name] = $exists
+    return $exists
+}
+
+$isConsoleHost = $Host.Name -eq 'ConsoleHost'
+$isInteractiveConsole = $isConsoleHost -and -not [Console]::IsOutputRedirected
+$script:PoshGitLoaded = $false
+$script:PSFzfLoaded = $false
+#+end_src
+
+* Environment
+
+** HOME Directory
+
+Windows does not set =HOME= by default; many tools (Git Bash, Emacs, =Join-Path $HOME= in
+this profile) expect it. Use =USERPROFILE= so the profile works on any account name.
+
+#+begin_src powershell
+$env:HOME = $env:USERPROFILE
+
+$configPathsLib = Join-Path $env:USERPROFILE '.config\scripts\_lib\config-paths.ps1'
+if (Test-Path -LiteralPath $configPathsLib) {
+    . $configPathsLib
+}
+# Scripts are flat under ~/.config/scripts/ (not scripts/powershell/)
+$script:ConfigScriptsRoot = Join-Path $HOME '.config\scripts'
+#+end_src
+
+* Terminal Colors
+
+** $PSStyle.FileInfo Colors
+
+PS 7.3+ colors directory names via $PSStyle.FileInfo. Stock settings often use a
+blue background (reverse video) that clashes with dark themes (e.g. Catppuccin
+in Windows Terminal). These are foreground-only 24-bit colors matching the
+PSReadLine Catppuccin block.
+
+#+begin_src powershell
+if (Get-Variable PSStyle -ErrorAction SilentlyContinue) {
+    if ($PSStyle.FileInfo) {
+        $PSStyle.FileInfo.Directory    = "`e[38;2;137;180;250m"  # blue #89b4fa
+        $PSStyle.FileInfo.SymbolicLink = "`e[38;2;203;166;247m"  # mauve #cba6f7
+        $PSStyle.FileInfo.Executable   = "`e[38;2;166;227;161m"  # green #a6e3a1
+    }
+}
+#+end_src
+
+* PSReadLine Configuration
+
+** Core Settings
+
+Vi mode with cursor indicator, no duplicates in history, incremental save.
+Bell disabled to reduce noise.
+
+#+begin_src powershell
+$psReadLineLoaded = $false
+if (Test-Module PSReadLine) {
+    Import-Module PSReadLine
+    $psReadLineLoaded = $true
+
+    Set-PSReadLineOption -EditMode Vi
+    Set-PSReadLineOption -ViModeIndicator Cursor
+    Set-PSReadLineOption -HistoryNoDuplicates
+    Set-PSReadLineOption -HistorySaveStyle SaveIncrementally
+    Set-PSReadLineOption -BellStyle None
+#+end_src
+
+** Predictions
+
+Use Az.Tools.Predictor for enhanced suggestions if available, fallback to history.
+Inline view keeps suggestions compact.
+
+Defer Az.Tools.Predictor import using idle event to reduce startup time.
+
+#+begin_src powershell
+    if ($isInteractiveConsole) {
+        # Defer Az.Tools.Predictor to reduce startup time
+        # It will be imported on first prediction trigger
+        Set-PSReadLineOption -PredictionSource History
+        Set-PSReadLineOption -PredictionViewStyle InlineView
+
+        # Async import of Az.Tools.Predictor after prompt appears
+        $null = Register-EngineEvent -SourceIdentifier PowerShell.OnIdle -MaxTriggerCount 1 -Action {
+            if (Test-Module Az.Tools.Predictor) {
+                Import-Module Az.Tools.Predictor -ErrorAction SilentlyContinue
+                Set-PSReadLineOption -PredictionSource HistoryAndPlugin
+            }
+        }
+    }
+#+end_src
+
+** PATH: Ollama CLI + himalaya + Doom Emacs
+
+Add CLI tool bins to PATH so =ollama=, =himalaya=, and =doom= work in any terminal.
+Emacs itself (=emacs=, =emacsclient=) is installed under Program Files; this adds
+=~/.config/emacs/bin= (Doom CLI scripts: =doom=, =org-capture=, etc.).
+
+#+begin_src powershell
+$extraPaths = @(
+    (Join-Path $env:LOCALAPPDATA 'Programs\Ollama'),
+    (Join-Path $env:USERPROFILE '.config\himalaya\bin'),
+    (Join-Path $env:USERPROFILE '.config\emacs\bin')
+)
+# Session: prepend any that are missing so they work in THIS shell now. Compare
+# against split entries (not -like "*$p*", which false-matches substrings).
+foreach ($p in $extraPaths) {
+    if ((Test-Path -LiteralPath $p) -and (($env:Path -split ';') -notcontains $p)) {
+        $env:Path = "$p;$env:Path"
+    }
+}
+# Persist for other apps — but add ONLY entries not already in the USER Path.
+# The previous version appended all three on EVERY launch, which bloated the
+# persisted Path to 221 entries (56 duplicate copies) and grew it past the length
+# where spawned shells lose `node`. This is idempotent: no missing -> no write.
+$have = [Environment]::GetEnvironmentVariable('Path', 'User') -split ';'
+$missing = $extraPaths | Where-Object { $_ -and ($have -notcontains $_) }
+if ($missing) {
+    [Environment]::SetEnvironmentVariable('Path', ((@($have | Where-Object { $_ }) + $missing) -join ';'), 'User')
+}
+#+end_src
+
+** Catppuccin Colors
+
+Matching the Mocha palette used throughout the system.
+
+#+begin_src powershell
+    Set-PSReadLineOption -Colors @{
+        Command          = '#89b4fa'
+        Parameter        = '#fab387'
+        Operator         = '#f38ba8'
+        Variable         = '#b4befe'
+        Comment          = '#585b70'
+        String           = '#a6e3a1'
+        Number           = '#f9e2af'
+        Type             = '#b4befe'
+    }
+
+    # InlinePrediction is only supported in newer PSReadLine versions
+    try { Set-PSReadLineOption -Colors @{ InlinePrediction = '#6c7086' } -ErrorAction Stop } catch {}
+
+    if (Get-Variable PSStyle -ErrorAction SilentlyContinue) {
+        $PSStyle.Formatting.Error = "`e[38;2;243;139;168m"
+    }
+#+end_src
+
+** Key Bindings
+
+- RightArrow: Accept next suggestion word
+- Tab: Menu completion
+- Up/Down Arrow: Smart history search (filters by typed prefix)
+
+#+begin_src powershell
+    if ($isInteractiveConsole) {
+        Set-PSReadLineKeyHandler -Key RightArrow -Function AcceptNextSuggestionWord
+        Set-PSReadLineKeyHandler -Key Tab -Function MenuComplete
+
+        # Smart history search: ↑↓ filter history by typed prefix
+        Set-PSReadLineOption -HistorySearchCursorMovesToEnd
+        Set-PSReadLineKeyHandler -Key UpArrow -Function HistorySearchBackward
+        Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
+    }
+}
+#+end_src
+
+* Prompt and Navigation
+
+** Command Cache (Performance)
+
+Batch command availability checks at startup to avoid multiple PATH searches.
+To prevent massive lag, we ONLY check the core tools needed to construct the prompt and keybindings (starship, zoxide, eza, fzf, etc.). Other tools are checked on-demand via `Test-Command`.
+
+#+begin_src powershell
+$script:__cmdCache = $null
+function Get-CommandCache {
+    if ($null -eq $script:__cmdCache) {
+        $script:__cmdCache = @{}
+        $startupCmds = @('starship', 'zoxide', 'eza', 'bat', 'fzf', 'fd', 'es')
+        foreach ($c in $startupCmds) {
+            $script:__cmdCache[$c] = $null -ne (Get-Command $c -ErrorAction SilentlyContinue)
+        }
+    }
+    return $script:__cmdCache
+}
+
+# Use cached checks for startup-critical commands
+$__cmds = Get-CommandCache
+#+end_src
+
+** Starship
+
+Initialize Starship prompt if available.
+
+#+begin_src powershell
+if ($isInteractiveConsole -and $__cmds['starship']) {
+    Invoke-Expression (&starship init powershell)
+}
+#+end_src
+
+** Zoxide
+
+Initialize zoxide for smart directory jumping.
+Guard prevents errors when zoxide is not installed.
+
+#+begin_src powershell
+if ($isInteractiveConsole -and $__cmds['zoxide']) {
+    Invoke-Expression (& { (zoxide init powershell | Out-String) })
+}
+#+end_src
+
+** Enhanced Z Function
+
+Override z to support all zoxide flags/subcommands, not just navigation.
+This function is always defined, but calls to =__zoxide_z= (the inner
+navigation function that zoxide's init script creates) are reached only via
+the default =else= branch. If zoxide is not installed, =zoxide init= is
+skipped by the guard above and =__zoxide_z= is never defined; callers should
+be aware that running =z <path>= on a system without zoxide will produce a
+"command not found" error for =__zoxide_z=.
+
+#+begin_src powershell
+function z {
+    if (-not $__cmds['zoxide']) {
+        Write-Error "zoxide not installed. Install with: winget install ajeedqazi.zoxide"
+        return
+    }
+
+    if ($args.Count -eq 0) {
+        if (Get-Command __zoxide_z -ErrorAction SilentlyContinue) {
+            __zoxide_z ~
+        } else {
+            Write-Error "zoxide not initialized. Run: zoxide init powershell"
+        }
+        return
+    }
+
+    $first = $args[0]
+    switch ($first) {
+        { $_ -in @('add', 'remove', 'import', 'edit', 'init', 'query') } {
+            & zoxide @args
+            break
+        }
+        { $_ -in @('-l', '--list') } {
+            & zoxide query -l @($args | Select-Object -Skip 1)
+            break
+        }
+        { $_ -in @('-i', '--interactive') } {
+            $result = & zoxide query -i @($args | Select-Object -Skip 1)
+            if ($result) { Set-Location $result }
+            break
+        }
+        { $_ -in @('-e', '--echo') } {
+            & zoxide query @($args | Select-Object -Skip 1)
+            break
+        }
+        default {
+            if (Get-Command __zoxide_z -ErrorAction SilentlyContinue) {
+                __zoxide_z @args
+            } else {
+                Write-Error "zoxide not initialized. Run: zoxide init powershell"
+            }
+        }
+    }
+}
+#+end_src
+
+* File Listings (eza)
+
+Aliases for eza with icons. Only defined if eza is available.
+
+#+begin_src powershell
+if ($__cmds['eza']) {
+    function ls { eza --icons @args }
+    function ll { eza -l --icons @args }
+    function la { eza -la --icons @args }
+    function lt { eza -T --icons @args }
+}
+#+end_src
+
+* Doom Aliases
+
+Convenience aliases for Doom Emacs operations.
+
+#+begin_src powershell
+function dsdd { doom sync; doom doctor }
+#+end_src
+
+* bat as cat
+
+#+begin_src powershell
+# Use cached command check
+if ($__cmds['bat']) {
+    Set-Alias cat bat
+}
+#+end_src
+
+* Lazy Module Loaders
+
+Ensure-PoshGit and Ensure-PSFzf trigger lazy imports to keep startup fast
+while preserving features when needed.
+
+#+begin_src powershell
+function Ensure-PoshGit {
+    if ($script:PoshGitLoaded) { return $true }
+    if (-not $isInteractiveConsole -or -not (Test-Module posh-git)) { return $false }
+
+    try {
+        Import-Module posh-git -ErrorAction Stop
+        $script:PoshGitLoaded = $true
+        return $true
+    } catch {
+        Write-Warning "Failed to load posh-git: $_"
+        return $false
+    }
+}
+
+function Ensure-PSFzf {
+    if ($script:PSFzfLoaded) { return $true }
+    if (-not $isInteractiveConsole -or -not (Test-Module PSFzf) -or -not (Test-Command fzf) -or -not (Test-Command fd)) { return $false }
+
+    try {
+        Import-Module PSFzf -ErrorAction Stop
+        $env:FZF_DEFAULT_COMMAND = "fd --type f --hidden --follow --exclude .git"
+        $env:FZF_CTRL_T_COMMAND  = $env:FZF_DEFAULT_COMMAND
+        $env:FZF_ALT_C_COMMAND   = "fd --type d --hidden --follow --exclude .git"
+        Set-PsFzfOption -PSReadLineChordProvider 'Ctrl+/'
+        $script:PSFzfLoaded = $true
+        return $true
+    } catch {
+        Write-Warning "Failed to load PSFzf: $_"
+        return $false
+    }
+}
+#+end_src
+
+* FZF Keybindings
+
+Ctrl+Shift+r: Search history and inject selected line back into input (newest-first via --tac).
+Ctrl+f: Find files with fd.
+Ctrl+d: Find directories with fd.
+Ctrl+j: Interactive zoxide navigation.
+
+Uses cached command checks for startup performance. Ctrl+Shift+r uses stream-based
+history reading with --tac (newest-first) for large history files.
+
+#+begin_src powershell
+if ($isInteractiveConsole -and $psReadLineLoaded -and $__cmds['fzf']) {
+    Set-PSReadLineKeyHandler -Key Ctrl+Shift+r -ScriptBlock {
+        # Use faster stream-based reading for large history files
+        $historyPath = (Get-PSReadLineOption).HistorySavePath
+        $h = [System.IO.File]::ReadLines($historyPath)
+        $s = $h | fzf --tac
+        if ($s) { [Microsoft.PowerShell.PSConsoleReadLine]::Insert($s) }
+    }
+
+    if ($__cmds['fd']) {
+        Set-PSReadLineKeyHandler -Key Ctrl+f -ScriptBlock {
+            $f = fd | fzf
+            if ($f) { [Microsoft.PowerShell.PSConsoleReadLine]::Insert($f) }
+        }
+        Set-PSReadLineKeyHandler -Key Ctrl+d -ScriptBlock {
+            $d = fd --type d | fzf
+            if ($d) { Set-Location $d }
+        }
+    }
+
+    if ($__cmds['zoxide']) {
+        Set-PSReadLineKeyHandler -Key Ctrl+j -ScriptBlock {
+            $t = zoxide query -l | fzf
+            if ($t) { Set-Location $t }
+        }
+    }
+}
+#+end_src
+
+* ripgrep Search with Preview
+
+fzf-rg searches with ripgrep and previews results with bat or Get-Content.
+
+#+begin_src powershell
+function fzf-rg {
+    [CmdletBinding()]
+    param(
+        [Parameter(Position=0)]
+        [string]$Pattern
+    )
+
+    try {
+        if ([string]::IsNullOrWhiteSpace($Pattern)) {
+            $Pattern = Read-Host "Search for"
+            if ([string]::IsNullOrWhiteSpace($Pattern)) {
+                Write-Warning "Empty search pattern - aborting search"
+                return
+            }
+        }
+
+        if (-not (Ensure-PSFzf)) {
+            Write-Error "Failed to load PSFzf module"
+            return
+        }
+
+        if (-not (Test-Command rg)) {
+            Write-Error "ripgrep (rg) not found. Install with: winget install BurntSushi.ripgrep.MSVC"
+            return
+        }
+
+        if (-not (Test-Command fzf)) {
+            Write-Error "fzf not found. Install with: winget install junegunn.fzf"
+            return
+        }
+
+        $pathExpr = '$f=[regex]::Match($l,"^(?:[A-Za-z]:[\\/]|/)[^:]+").Value'
+        $preview = if (Test-Command bat) {
+            "powershell -NoProfile -Command `"\$l=\`"{1}\`";$pathExpr;bat --style=numbers --color=always \$f`""
+        } else {
+            "powershell -NoProfile -Command `"\$l=\`"{1}\`";$pathExpr;Get-Content \$f -TotalCount 200`""
+        }
+
+        $searchResult = rg --line-number --no-heading --color=always $Pattern 2>$null |
+            fzf --ansi --preview $preview --preview-window "right:50%:wrap" 2>$null
+
+        if ($searchResult -and $searchResult -match '^(?<path>(?:[A-Za-z]:[\\/]|/)[^:]+):(?<line>\d+):') {
+            $filePath = $matches['path']
+            $lineNumber = $matches['line']
+            Write-Host "Selected: ${filePath}:$lineNumber" -ForegroundColor Green
+
+            if (Test-Command code) {
+                & code --goto "${filePath}:$lineNumber"
+            } elseif (Test-Command emacsclient) {
+                & emacsclient "+$lineNumber" "$filePath"
+            }
+        } elseif (-not $searchResult) {
+            Write-Host "No selection made" -ForegroundColor Yellow
+        }
+    } catch {
+        Write-Error "Search failed: $_"
+    }
+}
+#+end_src
+
+* Helper Functions
+
+** File and Directory Operations
+
+#+begin_src powershell
+function ef {
+    [CmdletBinding()]
+    param(
+        [Parameter(Position=0, ValueFromRemainingArguments=$true)]
+        [string[]]$Query,
+
+        [int]$Count = 20,
+        [string]$Path,
+        [switch]$Folders,
+        [switch]$FilesOnly
+    )
+
+    if (-not $__cmds['es']) {
+        Write-Error "es not found. Install with: winget install voidtools.Everything.Cli"
+        return
+    }
+
+    $search = ($Query -join ' ').Trim()
+    if ([string]::IsNullOrWhiteSpace($search)) {
+        Write-Error "Usage: ef <search terms> [-Count N] [-Path <path>] [-Folders] [-FilesOnly]"
+        return
+    }
+
+    $args = @('-n', $Count)
+    if ($Path) { $args += @('-path', $Path) }
+    if ($Folders) { $args += '/ad' }
+    if ($FilesOnly) { $args += '/a-d' }
+    $args += $search
+
+    & es @args
+}
+
+function eff {
+    [CmdletBinding()]
+    param(
+        [Parameter(Position=0, ValueFromRemainingArguments=$true)]
+        [string[]]$Query,
+
+        [int]$Count = 20,
+        [string]$Path
+    )
+
+    ef @Query -Count $Count -Path $Path -FilesOnly
+}
+
+function efd {
+    [CmdletBinding()]
+    param(
+        [Parameter(Position=0, ValueFromRemainingArguments=$true)]
+        [string[]]$Query,
+
+        [int]$Count = 20,
+        [string]$Path
+    )
+
+    ef @Query -Count $Count -Path $Path -Folders
+}
+
+function eopen {
+    [CmdletBinding()]
+    param(
+        [Parameter(Position=0, ValueFromRemainingArguments=$true)]
+        [string[]]$Query,
+
+        [int]$Count = 20,
+        [string]$Path,
+        [switch]$Folders,
+        [switch]$FilesOnly,
+        [switch]$Select
+    )
+
+    if (-not $__cmds['es']) {
+        Write-Error "es not found. Install with: winget install voidtools.Everything.Cli"
+        return
+    }
+
+    $search = ($Query -join ' ').Trim()
+    if ([string]::IsNullOrWhiteSpace($search)) {
+        Write-Error "Usage: eopen <search terms> [-Count N] [-Path <path>] [-Folders] [-FilesOnly] [-Select]"
+        return
+    }
+
+    $args = @('-n', $Count)
+    if ($Path) { $args += @('-path', $Path) }
+    if ($Folders) { $args += '/ad' }
+    if ($FilesOnly) { $args += '/a-d' }
+    $args += $search
+
+    $results = @(& es @args)
+    if (-not $results) {
+        Write-Warning "No Everything results found for '$search'"
+        return
+    }
+
+    $target = if ($Select -and $__cmds['fzf'] -and $results.Count -gt 1) {
+        $results | fzf --header="Select result to open"
+    } else {
+        $results[0]
+    }
+
+    if ($target) {
+        Invoke-Item $target
+    }
+}
+
+function ecd {
+    [CmdletBinding()]
+    param(
+        [Parameter(Position=0, ValueFromRemainingArguments=$true)]
+        [string[]]$Query,
+
+        [int]$Count = 20,
+        [string]$Path,
+        [switch]$Select
+    )
+
+    if (-not $__cmds['es']) {
+        Write-Error "es not found. Install with: winget install voidtools.Everything.Cli"
+        return
+    }
+
+    $search = ($Query -join ' ').Trim()
+    if ([string]::IsNullOrWhiteSpace($search)) {
+        Write-Error "Usage: ecd <search terms> [-Count N] [-Path <path>] [-Select]"
+        return
+    }
+
+    $args = @('-n', $Count)
+    if ($Path) { $args += @('-path', $Path) }
+    $args += '/ad'
+    $args += $search
+
+    $results = @(& es @args)
+    if (-not $results) {
+        Write-Warning "No matching directories found for '$search'"
+        return
+    }
+
+    $target = if ($Select -and $__cmds['fzf'] -and $results.Count -gt 1) {
+        $results | fzf --header="Select directory to enter"
+    } else {
+        $results[0]
+    }
+
+    if ($target) {
+        Set-Location $target
+        Write-Host "Changed to: $target" -ForegroundColor Green
+    }
+}
+
+function mkcd {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Path
+    )
+
+    try {
+        if (Test-Path $Path -PathType Container) {
+            Set-Location -Path $Path -ErrorAction Stop
+            Write-Host "Changed to existing directory: $Path" -ForegroundColor Green
+            return
+        }
+
+        New-Item -ItemType Directory -Path $Path -Force -ErrorAction Stop | Out-Null
+        Set-Location -Path $Path -ErrorAction Stop
+        Write-Host "Created and entered directory: $Path" -ForegroundColor Green
+    } catch {
+        Write-Error "Failed to create or enter directory '$Path': $_"
+    }
+}
+
+function take {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true, Position=0, ValueFromRemainingArguments=$true)]
+        [string[]]$Paths
+    )
+
+    if ($Paths.Count -eq 1) {
+        mkcd -Path $Paths[0]
+    } else {
+        Write-Error "take requires exactly one path argument"
+    }
+}
+
+function extract {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true, Position=0)]
+        [ValidateScript({
+            if (-not (Test-Path $_ -PathType Leaf)) {
+                throw "File '$_' does not exist or is not a file"
+            }
+            return $true
+        })]
+        [string]$File
+    )
+
+    try {
+        $fileInfo = Get-Item -Path $File -ErrorAction Stop
+
+        switch -regex ($fileInfo.Name) {
+            '\.zip$' {
+                Expand-Archive -Path $File -DestinationPath $fileInfo.DirectoryName -ErrorAction Stop
+                Write-Host "Extracted ZIP archive: $File" -ForegroundColor Green
+            }
+            '\.(tar\.gz|tgz)$' {
+                tar -xzf $File -C $fileInfo.DirectoryName
+                Write-Host "Extracted tar.gz archive: $File" -ForegroundColor Green
+            }
+            '\.(tar\.bz2|tbz2)$' {
+                tar -xjf $File -C $fileInfo.DirectoryName
+                Write-Host "Extracted tar.bz2 archive: $File" -ForegroundColor Green
+            }
+            '\.tar$' {
+                tar -xf $File -C $fileInfo.DirectoryName
+                Write-Host "Extracted tar archive: $File" -ForegroundColor Green
+            }
+            '\.7z$' {
+                if (-not (Test-Command 7z)) {
+                    Write-Error "7-Zip (7z) not found. Install with: winget install 7zip.7zip"
+                    return
+                }
+                & 7z x $File -o"$($fileInfo.DirectoryName)" -y
+                Write-Host "Extracted 7-Zip archive: $File" -ForegroundColor Green
+            }
+            default {
+                Write-Error "Unsupported file type: $($fileInfo.Extension). Supported: .zip, .tar, .tar.gz, .tgz, .tar.bz2, .tbz2, .7z"
+            }
+        }
+    } catch {
+        Write-Error "Failed to extract '$File': $_"
+    }
+}
+
+function reload { . $PROFILE }
+
+function which {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true, Position=0, ValueFromRemainingArguments=$true)]
+        [string[]]$Commands
+    )
+
+    if ($Commands.Count -eq 0) {
+        Write-Error "which requires at least one command name"
+        return
+    }
+
+    try {
+        $results = foreach ($cmd in $Commands) {
+            $commandInfo = Get-Command -Name $cmd -ErrorAction SilentlyContinue
+            if ($commandInfo) {
+                [PSCustomObject]@{
+                    Name = $commandInfo.Name
+                    Source = $commandInfo.Source
+                    CommandType = $commandInfo.CommandType
+                }
+            } else {
+                [PSCustomObject]@{
+                    Name = $cmd
+                    Source = "Not found"
+                    CommandType = "None"
+                }
+            }
+        }
+
+        $results | Format-Table -AutoSize
+    } catch {
+        Write-Error "Failed to get command information: $_"
+    }
+}
+
+function whereami {
+    try {
+        $location = Get-Location -ErrorAction Stop
+        Write-Host $location.Path -ForegroundColor Cyan
+        return $location.Path
+    } catch {
+        Write-Error "Failed to get current location: $_"
+    }
+}
+
+function touch {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true, Position=0, ValueFromRemainingArguments=$true)]
+        [string[]]$Paths
+    )
+
+    foreach ($path in $Paths) {
+        try {
+            if (Test-Path $path) {
+                (Get-Item $path).LastWriteTime = Get-Date
+            } else {
+                New-Item -ItemType File -Path $path -Force -ErrorAction Stop | Out-Null
+                Write-Host "Created file: $path" -ForegroundColor Green
+            }
+        } catch {
+            Write-Error "Failed to touch '$path': $_"
+        }
+    }
+}
+
+function serve {
+    [CmdletBinding()]
+    param(
+        [Parameter(Position=0)]
+        [ValidateRange(1, 65535)]
+        [int]$Port = 8000,
+
+        [Parameter(Position=1)]
+        [string]$Directory = (Get-Location).Path
+    )
+
+    try {
+        if (-not (Test-Path $Directory -PathType Container)) {
+            Write-Error "Directory '$Directory' does not exist"
+            return
+        }
+
+        if (-not (Test-Command python)) {
+            Write-Error "Python not found. Install Python to use the serve command"
+            return
+        }
+
+        Write-Host "Starting HTTP server on port $Port serving directory: $Directory" -ForegroundColor Green
+        Write-Host "Access at: http://localhost:$Port" -ForegroundColor Cyan
+        Write-Host "Press Ctrl+C to stop the server" -ForegroundColor Yellow
+
+        Push-Location -Path $Directory
+        try {
+            python -m http.server $Port
+        } finally {
+            Pop-Location
+        }
+    } catch {
+        Write-Error "Failed to start HTTP server: $_"
+    }
+}
+
+function copypath {
+    [CmdletBinding()]
+    param(
+        [Parameter(Position=0)]
+        [string]$Path = (Get-Location).Path
+    )
+
+    try {
+        if (-not (Test-Path $Path)) {
+            Write-Error "Path '$Path' does not exist"
+            return
+        }
+
+        $resolvedPath = Resolve-Path -Path $Path -ErrorAction Stop
+        $resolvedPath.Path | Set-Clipboard -ErrorAction Stop
+        Write-Host "Copied path: $($resolvedPath.Path)" -ForegroundColor Green
+    } catch {
+        Write-Error "Failed to copy path: $_"
+    }
+}
+#+end_src
+
+** Zoxide Directory Addition
+
+Quickly add common directories to zoxide database.
+
+#+begin_src powershell
+function zoxide-add-home {
+    param([string[]]$Dirs = @('.config', 'dev', 'Documents', 'Downloads'))
+    if (-not $__cmds['zoxide']) {
+        Write-Error "zoxide not installed. Install with: winget install ajeedqazi.zoxide"
+        return
+    }
+    foreach ($d in $Dirs) {
+        $base = Join-Path $HOME $d
+        if (-not (Test-Path $base)) { continue }
+        & zoxide add $base
+        Get-ChildItem $base -Directory -Recurse -ErrorAction SilentlyContinue |
+            ForEach-Object { & zoxide add $_.FullName }
+    }
+    Write-Host "Added $($Dirs -join ', ') to zoxide"
+}
+#+end_src
+
+* Bookmarks
+
+Simple directory bookmarking system. Marks are stored in ~/.marks.
+Directory is created lazily on first use, not every startup.
+
+#+begin_src powershell
+# Lazy initialization for marks directory
+function mark {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Name
+    )
+
+    try {
+        $marksDir = Join-Path $HOME '.config\.marks'
+        if (!(Test-Path $marksDir)) {
+            New-Item -ItemType Directory -Path $marksDir -Force -ErrorAction Stop | Out-Null
+        }
+
+        $markFile = Join-Path $marksDir $Name
+        $currentLocation = Get-Location -ErrorAction Stop
+        Set-Content -Path $markFile -Value $currentLocation.Path -ErrorAction Stop
+        Write-Host "Marked '$Name' -> $($currentLocation.Path)" -ForegroundColor Green
+    } catch {
+        Write-Error "Failed to create mark '$Name': $_"
+    }
+}
+
+function jump {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Name
+    )
+
+    try {
+        $marksDir = Join-Path $HOME '.config\.marks'
+        $markFile = Join-Path $marksDir $Name
+
+        if (!(Test-Path $markFile)) {
+            Write-Error "Mark '$Name' not found. Use 'mark <name>' to create a mark first."
+            return
+        }
+
+        $targetLocation = Get-Content -Path $markFile -ErrorAction Stop
+        if ([string]::IsNullOrWhiteSpace($targetLocation)) {
+            Write-Error "Mark '$Name' is empty or corrupted."
+            return
+        }
+
+        if (!(Test-Path $targetLocation)) {
+            Write-Error "Mark '$Name' points to non-existent location: $targetLocation"
+            return
+        }
+
+        Write-Host "Jumping '$Name' -> $targetLocation" -ForegroundColor Cyan
+        Set-Location -Path $targetLocation -ErrorAction Stop
+    } catch {
+        Write-Error "Failed to jump to mark '$Name': $_"
+    }
+}
+#+end_src
+
+* Directory Stack Navigation
+
+PowerShell pushd/popd with Alt+Arrow keybindings.
+~back~ pops the location stack and saves the current dir to a forward stack.
+~forward~ navigates to the top of the forward stack, pushing current dir back
+onto the location stack so ~back~ can return to it again.
+
+#+begin_src powershell
+$global:__navForward = [System.Collections.Generic.Stack[string]]::new()
+
+function back {
+    try {
+        $here = (Get-Location).Path
+        Pop-Location
+        $global:__navForward.Push($here)
+    } catch { Write-Host 'No previous directory' -ForegroundColor DarkGray }
+}
+
+function forward {
+    if ($global:__navForward.Count -eq 0) {
+        Write-Host 'No forward directory' -ForegroundColor DarkGray
+        return
+    }
+    Push-Location (Get-Location)
+    Set-Location ($global:__navForward.Pop())
+}
+
+function stack   { Get-Location -Stack }
+
+if ($isInteractiveConsole -and $psReadLineLoaded) {
+    Set-PSReadLineKeyHandler -Key Alt+LeftArrow  -ScriptBlock { back }
+    Set-PSReadLineKeyHandler -Key Alt+RightArrow -ScriptBlock { forward }
+}
+#+end_src
+
+* Git Tools
+
+FZF-powered git workflows. All functions lazy-load PoshGit and PSFzf.
+
+#+begin_src powershell
+function gco {
+    $null = Ensure-PoshGit
+    $null = Ensure-PSFzf
+    if ((Test-Command git) -and (Test-Command fzf)) { git branch --all | fzf | ForEach-Object { git checkout $_.Trim() } }
+}
+function glog {
+    $null = Ensure-PoshGit
+    $null = Ensure-PSFzf
+    if ((Test-Command git) -and (Test-Command fzf)) { git log --oneline --graph --decorate | fzf }
+}
+function gadd {
+    $null = Ensure-PoshGit
+    $null = Ensure-PSFzf
+    if ((Test-Command git) -and (Test-Command fzf)) { git ls-files -m -o --exclude-standard | fzf -m | ForEach-Object { git add $_ } }
+}
+function gstash {
+    $null = Ensure-PoshGit
+    $null = Ensure-PSFzf
+    if ((Test-Command git) -and (Test-Command fzf)) { git stash list | fzf | ForEach-Object { git stash show -p $_.Split(':')[0] } }
+}
+#+end_src
+
+* Process Tools
+
+Kill processes interactively with fzf, or directly by name.
+
+- ~fkill~: Opens fzf to select a process from all running processes (sorted by CPU usage).
+- ~fkill chrome~: Kills the first matching process by name immediately (no fzf prompt).
+
+#+begin_src powershell
+function fkill {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false, Position = 0)]
+        [string]$ProcessName
+    )
+
+    if ($ProcessName) {
+        $proc = Get-Process -Name $ProcessName -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($proc) {
+            Stop-Process -Id $proc.Id -Force
+            Write-Host "Killed $($proc.ProcessName) (PID: $($proc.Id))" -ForegroundColor Green
+        } else {
+            Write-Host "No process matching '$ProcessName' found." -ForegroundColor Yellow
+        }
+        return
+    }
+
+    $null = Ensure-PSFzf
+    if (-not (Test-Command fzf)) {
+        Write-Host "fkill requires fzf (install with: winget install junegunn.fzf)" -ForegroundColor Red
+        return
+    }
+
+    Get-Process |
+        Sort-Object CPU -Descending |
+        Select-Object Id, ProcessName, CPU, WorkingSet |
+        fzf --header="Select process to kill" |
+        ForEach-Object { Stop-Process -Id ($_.Trim() -split '\s+')[0] -Force }
+}
+#+end_src
+
+* sudo
+
+gsudo integration with psudo to re-run last command with elevation.
+
+#+begin_src powershell
+if (Test-Command gsudo) {
+    Set-Alias sudo gsudo
+}
+function psudo { sudo (Get-History -Count 1).CommandLine }
+#+end_src
+
+* Bash Helper
+
+Quick way to run bash commands from PowerShell (used for Doom Emacs).
+
+#+begin_src powershell
+function bash {
+    $command = $args -join ' '
+    & "C:\Program Files\Git\bin\bash.exe" --login -c "$command"
+}
+#+end_src
+
+* Tangling
+
+Shortcut for regenerating literate configs from PowerShell.
+
+- =tangle all= runs the batch tangle script across =~/.config=
+- =tangle powershell= tangles this file directly
+
+Single-document targets can be passed as a full path, a path relative to
+=~/.config=, or a bare file stem such as =kanata= when there is a unique match.
+
+#+begin_src powershell
+function Invoke-ConfigTangle {
+    param(
+        [Parameter(Position = 0)]
+        [string]$Target,
+        [switch]$DryRun
+    )
+
+    $configRoot = Join-Path $HOME '.config'
+    $tangleScript = Join-Path $configRoot 'scripts\utility\tangle-configs.ps1'
+
+    if (-not $Target) {
+        Write-Host 'Usage: tangle all | tangle <stem> | tangle $env:USERPROFILE\.config\path\to\file.org' -ForegroundColor Yellow
+        return
+    }
+
+    if ($Target -ieq 'all') {
+        if (-not (Test-Path $tangleScript)) {
+            Write-Host "Tangle script not found at $tangleScript" -ForegroundColor Red
+            return
+        }
+
+        & $tangleScript -DryRun:$DryRun
+        return
+    }
+
+    $targetNames = @($Target)
+    if (-not [System.IO.Path]::HasExtension($Target)) {
+        $targetNames += "$Target.org"
+    }
+
+    $candidatePaths = @()
+    if (-not [System.IO.Path]::HasExtension($Target)) {
+        $nestedStems = @{ scripts = 'scripts\scripts.org' }
+        if ($nestedStems.ContainsKey($Target)) {
+            $candidatePaths += (Join-Path $configRoot $nestedStems[$Target])
+        }
+    }
+    foreach ($name in $targetNames) {
+        $candidatePaths += $name
+        $candidatePaths += (Join-Path $configRoot $name)
+    }
+
+    $orgFile = $candidatePaths |
+        Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+        Select-Object -First 1
+
+    if (-not $orgFile) {
+        $leafName = if ([System.IO.Path]::HasExtension($Target)) {
+            [System.IO.Path]::GetFileName($Target)
+        } else {
+            "$Target.org"
+        }
+
+        $escapedConfig  = [regex]::Escape($configRoot)
+        $excludePattern = "$escapedConfig\\emacs\\|\\\.git\\|\\archive\\"
+        $matches = @(Get-ChildItem -Path $configRoot -Filter $leafName -Recurse -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -notmatch $excludePattern })
+
+        if ($matches.Count -eq 1) {
+            $orgFile = $matches[0].FullName
+        } elseif ($matches.Count -gt 1) {
+            Write-Host "Multiple matches found for '$Target':" -ForegroundColor Yellow
+            $matches | ForEach-Object { Write-Host "  - $($_.FullName)" }
+            Write-Host 'Use a more specific path.' -ForegroundColor Yellow
+            return
+        }
+    }
+
+    if (-not $orgFile) {
+        Write-Host "No Org source found for '$Target' under $configRoot" -ForegroundColor Red
+        return
+    }
+
+    if ([System.IO.Path]::GetExtension($orgFile) -ne '.org') {
+        Write-Host "Target must resolve to an .org file: $orgFile" -ForegroundColor Red
+        return
+    }
+
+    if (-not (Get-Command Get-EmacsExecutable -ErrorAction SilentlyContinue)) {
+        $pathsLib = Join-Path $configRoot 'scripts\_lib\config-paths.ps1'
+        if (Test-Path -LiteralPath $pathsLib) { . $pathsLib }
+    }
+
+    $emacsExe = Get-EmacsExecutable -Name emacs
+    if (-not $emacsExe) {
+        Write-Host 'Emacs not found. Install Emacs or ensure it is on PATH.' -ForegroundColor Red
+        return
+    }
+
+    $resolvedOrg = (Resolve-Path -LiteralPath $orgFile).Path
+    $fwd = $resolvedOrg -replace '\\', '/'
+
+    if ($DryRun) {
+        Write-Host "Dry run — would tangle $resolvedOrg" -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host "Tangling $resolvedOrg..." -NoNewline
+
+    $output = Invoke-EmacsOrgTangle -EmacsExe $emacsExe -OrgPath $resolvedOrg
+
+    $tangleOk = $output -match 'Tangled \d+ code block'
+    if ($tangleOk) {
+        if ((Split-Path -Leaf $resolvedOrg) -eq 'kanata.org') {
+            if (Get-Command Repair-KanataTangledFiles -ErrorAction SilentlyContinue) {
+                Repair-KanataTangledFiles -KanataDir (Join-Path $configRoot 'kanata')
+            }
+        }
+        Write-Host ' OK' -ForegroundColor Green
+    } else {
+        Write-Host " FAILED" -ForegroundColor Red
+        $output | Where-Object { $_ } | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkRed }
+    }
+}
+
+Set-Alias tangle Invoke-ConfigTangle
+#+end_src
+
+* Config script shortcuts
+
+Wrappers for =~/.config/scripts= helpers. Documented in
+[[file:../scripts/scripts.org::*Shell aliases (PowerShell)][scripts.org → Shell aliases]].
+
+#+begin_src powershell
+# Set by config-paths.ps1 when dot-sourced above; keep a fallback for partial loads.
+if (-not $script:ConfigScriptsRoot) {
+    $script:ConfigScriptsRoot = Join-Path $HOME '.config\scripts'
+}
+
+function Invoke-ConfigVerify {
+    param(
+        [string]$ConfigDir,
+        [switch]$ReadOnly,
+        [switch]$Fix
+    )
+    $verify = Join-Path $script:ConfigScriptsRoot 'utility\verify-org-tangle-sync.ps1'
+    if (-not (Test-Path -LiteralPath $verify)) {
+        Write-Host "Not found: $verify" -ForegroundColor Red
+        return
+    }
+    if ($Fix) {
+        if ($ConfigDir) { & $verify -ConfigDir $ConfigDir -ReadOnly:$false }
+        else { & $verify -ReadOnly:$false }
+    } elseif ($PSBoundParameters.ContainsKey('ReadOnly')) {
+        if ($ConfigDir) { & $verify -ConfigDir $ConfigDir -ReadOnly:$ReadOnly }
+        else { & $verify -ReadOnly:$ReadOnly }
+    } elseif ($ConfigDir) {
+        & $verify -ConfigDir $ConfigDir
+    } else {
+        & $verify
+    }
+}
+
+function Invoke-ConfigTangleValidate {
+    param([switch]$DryRun)
+    $batch = Join-Path $script:ConfigScriptsRoot 'utility\tangle-configs.ps1'
+    if (-not (Test-Path -LiteralPath $batch)) {
+        Write-Host "Not found: $batch" -ForegroundColor Red
+        return
+    }
+    & $batch -DryRun:$DryRun -Validate:(-not $DryRun)
+}
+
+function Invoke-BasicMemoryUp {
+    $start = Join-Path $script:ConfigScriptsRoot 'basic-memory\start-basic-memory-server.ps1'
+    if (-not (Test-Path -LiteralPath $start)) {
+        Write-Host "Not found: $start" -ForegroundColor Red
+        return
+    }
+    & $start
+}
+
+function Invoke-BasicMemoryDocs {
+    $export = Join-Path $script:ConfigScriptsRoot 'basic-memory\export-basic-memory-docs.ps1'
+    if (-not (Test-Path -LiteralPath $export)) {
+        Write-Host "Not found: $export" -ForegroundColor Red
+        return
+    }
+    & $export
+}
+
+function Invoke-DeployStartupOrchestrator {
+    $src = Join-Path $HOME '.config\scripts\startup\startup-orchestrator.vbs'
+    $dst = Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\StartUp\startup-orchestrator.vbs'
+    if (-not (Test-Path -LiteralPath $src)) {
+        Write-Host "Tangle scripts.org first — missing $src" -ForegroundColor Red
+        return
+    }
+    try {
+        Copy-Item -LiteralPath $src -Destination $dst -Force -ErrorAction Stop
+        Write-Host "Deployed: $dst" -ForegroundColor Green
+    } catch {
+        Write-Host 'Copy failed — run this function from an elevated PowerShell.' -ForegroundColor Yellow
+        Write-Host $_.Exception.Message -ForegroundColor DarkYellow
+    }
+}
+
+function Invoke-WebTerminal {
+    param(
+        [Parameter(Position = 0)]
+        [ValidateSet('start', 'stop', 'status')]
+        [string]$Action = 'status'
+    )
+    $toggle = Join-Path $script:ConfigScriptsRoot 'remote\ttyd-toggle.ps1'
+    if (-not (Test-Path -LiteralPath $toggle)) {
+        Write-Host "Not found: $toggle" -ForegroundColor Red
+        return
+    }
+    & $toggle -Action $Action
+}
+
+function Invoke-PhonemeDev {
+    param(
+        [string]$Root,
+        [switch]$KillStaleDaemon
+    )
+    $start = Join-Path $script:ConfigScriptsRoot 'phoneme\start-phoneme-dev.ps1'
+    if (-not (Test-Path -LiteralPath $start)) {
+        Write-Host "Not found: $start — run: tangle scripts" -ForegroundColor Red
+        return
+    }
+    $args = @()
+    if ($Root) { $args += '-Root', $Root }
+    if ($KillStaleDaemon) { $args += '-KillStaleDaemon' }
+    & $start @args
+}
+
+Set-Alias tangle-check   Invoke-ConfigVerify
+Set-Alias tangle-validate Invoke-ConfigTangleValidate
+Set-Alias basic-memory   Invoke-BasicMemoryUp
+Set-Alias bm-docs        Invoke-BasicMemoryDocs
+Set-Alias deploy-startup Invoke-DeployStartupOrchestrator
+Set-Alias webterm        Invoke-WebTerminal
+Set-Alias dev-phoneme    Invoke-PhonemeDev
+
+function hermes-gateway { & "$env:LOCALAPPDATA\hermes\hermes-agent\venv\Scripts\hermes.exe" gateway run --replace }
+#+end_src
+
+* Doom Emacs
+
+Wrapper to run Doom commands via WSL/bash.
+
+#+begin_src powershell
+function doom {
+    $doomScript = "$HOME\.config\emacs\bin\doom" -replace '\\', '/'
+    bash "`"$doomScript`" $args"
+}
+#+end_src
+
+* Config Editor
+
+Interactive config file picker. Opens selected config in Emacs (or Notepad as fallback).
+
+- =profile=: Open fzf selector for all literate configs
+- =profile powershell=: Open powershell.org directly
+- =profile kanata=: Open kanata.org directly
+
+#+begin_src powershell
+function profile {
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$Config = $null
+    )
+
+    $configs = @(
+        @{ Name = "powershell"; Path = "powershell/powershell.org" },
+        @{ Name = "git"; Path = "git/git.org" },
+        @{ Name = "kanata"; Path = "kanata/kanata.org" },
+        @{ Name = "komorebi"; Path = "komorebi/komorebi.org" },
+        @{ Name = "starship"; Path = "starship/starship.org" },
+        @{ Name = "espanso"; Path = "espanso/espanso.org" },
+        @{ Name = "everything"; Path = "everything/everything.org" },
+        @{ Name = "basic-memory"; Path = "basic-memory/basic-memory.org" },
+        @{ Name = "cursor"; Path = "cursor/cursor.org" },
+        @{ Name = "scripts"; Path = "scripts/scripts.org" },
+        @{ Name = "ttyd"; Path = "ttyd/ttyd.org" },
+        @{ Name = "wtq"; Path = "wtq/wtq.org" },
+        @{ Name = "vscode"; Path = "vscode/vscode.org" },
+        @{ Name = "windsurf"; Path = "windsurf/windsurf.org" },
+        @{ Name = "flowlauncher"; Path = "flowlauncher/flowlauncher.org" },
+        @{ Name = "wezterm"; Path = "wezterm/wezterm.org" },
+        @{ Name = "windows-terminal"; Path = "windows-terminal/windows-terminal.org" },
+        @{ Name = "tridactyl"; Path = "tridactyl/tridactyl.org" }
+    )
+
+    if ($Config) {
+        $selected = $configs | Where-Object { $_.Name -like "*$Config*" } | Select-Object -First 1
+    } else {
+        $null = Ensure-PSFzf
+        if (Test-Command fzf) {
+            $selected = $configs | ForEach-Object { $_.Name } | fzf --header="Select config to edit"
+            $selected = $configs | Where-Object { $_.Name -eq $selected } | Select-Object -First 1
+        } else {
+            Write-Host "fzf not found. Available configs:" -ForegroundColor Yellow
+            $configs | ForEach-Object { Write-Host "  - $($_.Name)" }
+            return
+        }
+    }
+
+    if ($selected) {
+        $fullPath = Join-Path $env:USERPROFILE ".config\$($selected.Path)"
+        if (Test-Command emacs) {
+            emacs $fullPath
+        } else {
+            notepad $fullPath
+        }
+    } else {
+        Write-Host "Config not found." -ForegroundColor Red
+    }
+}
+#+end_src
+
+* Pan — GPU node (***-laptop)
+
+=pan= opens the *Pan dashboard*: SSH into the GPU laptop's WSL over Tailscale and
+launch its Hermes interactive TUI (which wears Pan's own skin — a green "🐐 Pan"
+banner, visually distinct from Hermes). Pan is the second Hermes agent (son of Hermes).
+
+- Windows host shell: =ssh ***@***.***.***.***=
+- Pan / WSL (Linux + Hermes): port =2222=
+
+#+begin_src powershell
+function pan {
+    # One hop via the always-on host sshd:22 that boots Pan's WSL AND launches the Hermes
+    # dashboard (Pan skin). Works even if Pan was idle/off — no :2222, no timing gap.
+    ssh -t -o StrictHostKeyChecking=accept-new ***@***.***.***.*** "wsl -d Ubuntu -- bash -lc 'hermes chat'"
+}
+
+function pan-sh {
+    # SSH into Pan's WSL for a normal bash shell (no Hermes agent)
+    ssh -t -o StrictHostKeyChecking=accept-new ***@***.***.***.*** "wsl -d Ubuntu"
+}
+#+end_src

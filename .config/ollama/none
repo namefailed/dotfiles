@@ -1,0 +1,2 @@
+taskkill /f /im ollama.exe
+& "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe" serve

@@ -1,0 +1,94 @@
+#+title:      Everything Configuration
+#+date:       [2026-05-14 Thu]
+#+filetags:   :config:search:
+#+OPTIONS:    toc:2 num:nil broken-links:mark
+#+STARTUP:    overview
+
+#+begin_quote
+⚠ *DO NOT EDIT =Everything.ini= DIRECTLY.*
+
+This =everything.org= file is the source of truth for the managed Everything
+profile. Edit here, then tangle with =tangle everything= (or =M-x org-babel-tangle=).
+
+Everything still expects its runtime INI at =%APPDATA%\Everything\Everything.ini=.
+That file should resolve back to =~/.config/everything/Everything.ini= so the
+live runtime file and the literate source stay together.
+#+end_quote
+
+* Overview
+
+Unlike some of the editor JSON files, =Everything.ini= mixes real preferences
+with a lot of transient UI state. Keep this managed copy focused on the stable
+behavior that matters day to day: background indexing, search behavior, history
+policy, and the main result-list columns.
+
+* Managed INI
+
+#+begin_src conf :tangle Everything.ini :mkdirp yes
+; Please make sure Everything is not running before modifying this file.
+; Managed from ~/.config/everything/everything.org
+
+[Everything]
+run_in_background=1
+show_in_taskbar=1
+show_tray_icon=1
+minimize_to_tray=0
+check_for_updates_on_startup=0
+match_whole_word=0
+match_path=0
+match_case=0
+match_diacritics=0
+match_regex=0
+show_highlighted_search_terms=1
+close_on_execute=0
+auto_include_fixed_volumes=1
+auto_include_removable_volumes=0
+auto_remove_offline_ntfs_volumes=1
+auto_remove_moved_ntfs_volumes=1
+auto_include_fixed_refs_volumes=1
+auto_include_removable_refs_volumes=0
+auto_remove_offline_refs_volumes=1
+auto_remove_moved_refs_volumes=1
+scan_volume_drive_letters=1
+exclude_list_enabled=1
+ipc=1
+fast_ascii_search=1
+match_path_when_search_contains_path_separator=1
+search_as_you_type=1
+sort=Run Count
+sort_ascending=0
+status_bar_visible=1
+search_history_enabled=0
+run_history_enabled=1
+search_history_days_to_keep=90
+run_history_days_to_keep=90
+search_history_keep_forever=1
+run_history_keep_forever=1
+search_history_visible_count_max=12
+name_column_pos=0
+name_column_width=320
+path_column_visible=1
+path_column_pos=1
+path_column_width=320
+size_column_visible=1
+size_column_pos=2
+size_column_width=120
+last_write_time_column_visible=1
+last_write_time_column_pos=3
+last_write_time_column_width=191
+#+end_src
+
+* Overview & Architecture
+
+Everything by Voidtools is the backend indexing engine for file searches on Windows.
+
+**Why Everything?**
+Windows native search is notoriously slow and unreliable. Everything indexes the MFT (Master File Table) directly, providing instantaneous, sub-millisecond file lookups. We use it as the backend engine for Flow Launcher and command-line es searches, entirely bypassing the Windows indexer.
+
+* Runtime Notes
+
+- This is a curated subset of the full INI, not a byte-for-byte dump of every
+  transient window coordinate or UI artifact
+- Tangle first, then restart Everything so it reloads the updated INI
+- Keep plugin/runtime history files outside this folder; only the main INI is
+  treated as the config-of-record

@@ -1,0 +1,47 @@
+#+title:      Starship Prompt
+#+date:       [2026-05-13 Tue]
+#+filetags:   :config:shell:
+
+* Overview
+
+=starship.org= is the source of truth and tangles to =starship.toml=. The prompt
+is intentionally small: directory, git state, command duration, then a modal
+prompt character on the second line.
+
+* Files
+
+- =starship.org= -- source of truth
+- =starship.toml= -- tangled prompt config
+
+* Prompt Layout
+
+Two lines:
+
+1. directory + git branch + git status + command duration + timestamp
+2. prompt character
+
+* Modules
+
+- Directory: blue bold path, truncated to repo context, read-only lock when needed
+- Git branch: magenta branch symbol ==
+- Git status: yellow indicators for conflicts, ahead/behind, staged, modified,
+  deleted, and untracked files
+- Command duration: shown only when the last command took more than 500 ms
+- Time: current timestamp, useful for knowing when long commands finished
+- Character: =❯= on success, =❯= on error, =❮= in Vi command mode
+
+* Theme
+
+The active palette is =catppuccin_mocha= and defines the standard Catppuccin
+Mocha eight-color set used by the prompt modules.
+
+* Reload
+
+Starship picks up config changes on the next prompt render. Restart the shell if
+you do not see the update immediately.
+
+* PKM (Documents/org)
+
+- Denote: [[file:../../../../Documents/org/notes/tools/20260509T040800--starship__tools_reference.org][Starship]] (=20260509T040800=)
+- Tangle: =tangle starship=
+- WSL shares this file via =/mnt/c/Users/$WIN_USER/.config/starship/starship.toml=

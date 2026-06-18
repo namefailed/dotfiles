@@ -1,0 +1,28 @@
+{
+  "records": {
+    "settings": [
+      {
+        "Title": "Settings",
+        "SubTitle": "",
+        "PluginID": "791FC278BA414111B8D1886DFE447410",
+        "RecordKey": null
+      }
+    ],
+    "o j": [
+      {
+        "Title": "Journal: j",
+        "SubTitle": "Append to today\u0027s Log",
+        "PluginID": "f8b1d3a4-7e92-4c5a-b10d-5a6b7c8d9e0f",
+        "RecordKey": null
+      }
+    ],
+    "term": [
+      {
+        "Title": "WezTerm",
+        "SubTitle": "",
+        "PluginID": "791FC278BA414111B8D1886DFE447410",
+        "RecordKey": null
+      }
+    ]
+  }
+}

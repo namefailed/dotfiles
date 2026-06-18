@@ -1,0 +1,122 @@
+#+title:      Kanata Keyboard Remapping
+#+date:       [2026-05-13 Tue]
+#+filetags:   :config:keyboard:
+
+* Overview
+
+=kanata.org= is the source of truth and tangles to both =kanata.kbd= and
+=kanata-plain.kbd=. The main profile combines home-row modifiers, a Vim layer,
+mouse control, Komorebi control, launcher shortcuts, and two held numpad layers.
+
+* Files
+
+- =kanata.org= -- source of truth
+- =kanata.kbd= -- main layered profile (**generated**; gitignored — run =tangle kanata= after clone)
+- =kanata-plain.kbd= -- passthrough profile (**generated**; gitignored)
+
+After every =tangle kanata=, paths are rewritten for the current =%USERPROFILE%= via
+=Repair-KanataTangledFiles= in [[file:../scripts/_lib/config-paths.ps1][config-paths.ps1]].
+
+* Main Layout
+
+Default-layer hold behavior:
+
+- =A/S/D/F= -> =Meta/Alt/Ctrl/Shift=
+- =J/K/L/;= -> =Shift/Ctrl/Alt/Meta=
+- =Caps= -> tap =Esc=, hold =vim=
+- =`= -> tap grave, hold =mouse=
+- =LAlt= -> pass-through Alt + hold =lalt-komorebi=
+- =LWin= -> pass-through Win + hold =lmet-launcher=
+- =G= / =H= -> tap letters, hold Komorebi layer directly
+- =Tab= -> tap =Tab=, hold right-hand numpad layer
+- =Apostrophe= -> tap ='=, hold left-hand numpad layer
+
+* Layers
+
+- =default= -- home-row mods plus the layer triggers above
+- =nomods= -- brief passthrough layer after HRM taps to avoid accidental modifiers
+- =vim= -- system-wide editing/navigation layer on Caps hold
+- =lalt-komorebi= -- window manager controls via held =LAlt= or held =G/H=
+- =lmet-launcher= -- app launcher layer on held =LWin=
+- =mouse= -- mouse movement, clicks, wheel, and browser back/forward
+- =numpad-right= -- held =Tab= maps the right hand to a numpad
+- =numpad-left= -- held apostrophe maps the left hand to a numpad
+
+* Key Highlights
+
+** Vim Layer
+
+- =h/j/k/l= -- arrows
+- =u= / =d= -- page up / page down
+- =y= / =p= / =c= / =x= -- copy / paste / cut / delete
+- =w= / =b= -- word forward / back
+- =g= -- line end / line start tap-dance
+- =4= / =0= -- End / Home
+- =o= -- open line below
+- =z= -- undo
+- =r= -- redo
+- =/= -- find
+
+** Komorebi Layer
+
+- =h/j/k/l= -- focus window; with Shift move window
+- =Ctrl+h/l= -- cycle workspace prev/next
+- =Ctrl+Shift+h/l= -- move window to workspace prev/next
+- =Ctrl+j/k= -- cycle monitor prev/next
+- =Ctrl+Shift+j/k= -- send window to monitor prev/next
+- =1..7= -- focus workspaces; with Shift move windows there
+- =g= -- cycle layout; with Shift force BSP
+- =b= -- toggle bar
+- =t= / =f= -- toggle float / monocle
+- =q= / =m= -- close / minimize
+
+** Launcher Layer
+
+Standard apps use =focus-or-launch.ps1= (process name + main window). Emacs uses
+dedicated scripts because one =emacs.exe= has several frames (Home, journal, Howm):
+
+- =Enter= -- Emacs Home frame (=emacs-home-frame.ps1= → title =Emacs Home=)
+- =j= -- journal workspace frame (=emacs-notes.ps1= → title contains =journal.org=)
+- =S= -- *(removed — howm+WTQ removed)*
+- =f= -- Firefox
+- =o= -- Outlook
+- =p= -- Phone Link
+
+** Mouse Layer
+
+- =o/k/l/;= -- move up / left / down / right
+- =i= / =p= -- left / right click
+- =e= / =d= -- scroll up / down
+- =,= / =.= -- browser back / forward
+
+** Numpad Layers
+
+- Hold =Tab=: =Y/U/I/O/J/K/L= -> =0/4/5/6/1/2/3=
+- Hold apostrophe: mirrored left-hand numpad layer
+
+* Scripts
+
+Kanata invokes helpers under [[file:../scripts/scripts.org][scripts.org]]:
+
+- =powershell/kanata/focus-or-launch.ps1= — generic LWin app toggle (F, O, P, …)
+- =powershell/kanata/emacs-*.ps1= — multi-frame Emacs launchers (Enter, J, T, Howm)
+- =powershell/kanata/emacs-window-focus.ps1= — Win32 foreground by title (used by Emacs scripts, not Kanata directly)
+- =vbs/komorebi/run-powershell-silent.vbs= — silent PowerShell from the LWin launcher layer
+- =vbs/komorebi/komorebic-wrapper.vbs= — silent =komorebic= dispatcher for the Komorebi layer
+
+* Portability and tangle
+
+Script paths in =kanata.org= use noweb placeholders (=<<config-scripts-fwd>>=,
+=<<local-windowsapps-olk>>=). =tangle kanata= runs Emacs tangle, then
+=tangle-configs.ps1= post-processes =kanata.kbd= for the current =%USERPROFILE%=.
+Do not hand-edit =.kbd= paths — change =kanata.org= and re-tangle.
+
+* Reload
+
+After editing =kanata.org=, run =tangle kanata= and then restart Kanata using
+your normal toggle/restart workflow (=Ctrl+Shift+NumLock= twice, or the profile toggle script).
+
+* PKM (Documents/org)
+
+- Denote: [[file:../../../../Documents/org/notes/tools/20260509T040000--kanata__tools_reference.org][Kanata]] (=20260509T040000=)
+- Portability: [[file:../../../../Documents/org/notes/tools/20260519T120000--config-portability-and-path-conventions__tools_reference.org][Config Portability]]

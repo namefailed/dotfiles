@@ -1,0 +1,51 @@
+#+title:      ttyd — Web Terminal Server
+#+date:       [2026-05-16 Fri]
+#+filetags:   :config:terminal:web:
+
+* Overview
+
+ttyd shares a terminal over HTTP + WebSocket, enabling remote shell access from
+a phone or tablet browser without installing an SSH client. It is not tangled
+from this directory — =ttyd.org= is a literate reference only.
+
+* Files
+
+- =ttyd.org= — Reference documentation (no tangled output)
+
+* Configuration
+
+| Setting       | Value                          |
+|---------------+--------------------------------|
+| Version       | 1.7.7                          |
+| Installed via | winget (=tsl0922.ttyd=)       |
+| Port          | 7681                           |
+| Shell         | =cmd.exe= (pwsh crashes ttyd)  |
+| Trigger       | On-demand via =webterm= alias  |
+
+* Security
+
+- Bound to =0.0.0.0:7681= but only reachable through the Tailscale interface
+- No authentication layer — Tailscale mesh VPN is the sole access control
+- Start only when needed, stop when done
+- A custom firewall rule (=Profile Any=) was created because the Tailscale
+  adapter uses the Private profile; see =enable-ttyd-firewall.ps1=
+
+* Shell Aliases
+
+Defined in [[file:../powershell/powershell.org][powershell.org]]:
+
+| Alias | Action |
+|-------+--------|
+| =webterm start= | Start ttyd |
+| =webterm stop= | Stop ttyd |
+| =webterm status= | Check if ttyd is running |
+
+* PKM (Documents/org)
+
+- Denote: [[file:../../../../Documents/org/notes/tools/20260515T202046--remote-access__tools_reference.org][Remote Access Setup]] (=20260515T202046=)
+- Binary discovery: [[file:../scripts/_lib/config-paths.ps1][config-paths.ps1]] (=Resolve-WinGetPackageExe=)
+
+* Related
+
+- [[file:../scripts/README.org][Scripts]] — =ttyd-toggle.ps1= and =enable-ttyd-firewall.ps1=
+- [[file:../powershell/README.org][PowerShell]] — =webterm= alias

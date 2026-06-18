@@ -1,0 +1,3326 @@
+﻿#+title:      Scripts Collection
+#+date:       [2026-05-13 Tue]
+#+filetags:   :scripts:automation:powershell:
+# #+PROPERTY:   header-args:powershell :tangle yes :mkdirp yes
+#+OPTIONS:    toc:2 num:nil broken-links:mark
+#+STARTUP:    overview
+
+#+begin_quote
+⚠ *DO NOT EDIT GENERATED SCRIPT FILES DIRECTLY.*
+
+This =scripts.org= file is the source of truth for all scripts in
+=~/.config/scripts/=. Edit here, then tangle with =tangle scripts= (or
+=M-x org-babel-tangle=) to regenerate the =.ps1= and =.vbs= files.
+#+end_quote
+
+
+* Shared path helpers
+
+Single source of truth for profile-relative paths and install discovery.
+Dot-source from other scripts:
+
+#+begin_example
+. (Join-Path $env:USERPROFILE '.config\scripts\_lib\config-paths.ps1')
+#+end_example
+
+#+begin_src powershell :tangle _lib/config-paths.ps1 :mkdirp yes
+# config-paths.ps1 — portable path helpers (no hardcoded Windows account names).
+# Dot-source only; does not modify the caller's ErrorActionPreference.
+
+$script:ConfigRoot      = Join-Path $env:USERPROFILE '.config'
+$script:OrgRoot          = Join-Path $env:USERPROFILE 'Documents\org'
+$script:BasicMemoryRoot  = Join-Path $env:USERPROFILE 'basic-memory'
+$script:EmacsInitDir     = Join-Path $script:ConfigRoot 'emacs'
+$script:KanataDir        = Join-Path $script:ConfigRoot 'kanata'
+$script:ConfigScriptsRoot = Join-Path $script:ConfigRoot 'scripts'
+
+function Get-EmacsExecutable {
+    param(
+        [ValidateSet('emacs', 'emacsclient', 'emacsclientw', 'runemacs')]
+        [string]$Name = 'emacs'
+    )
+
+    $candidates = @(
+        "C:\Program Files\Emacs\emacs-30.2\bin\$Name.exe",
+        "C:\Program Files\Emacs\emacs-30.1\bin\$Name.exe",
+        (Join-Path 'C:\tools\emacs\bin' "$Name.exe"),
+        (Join-Path (Join-Path $env:ProgramData 'chocolatey\bin') "$Name.exe")
+    )
+
+    foreach ($path in $candidates) {
+        if (Test-Path -LiteralPath $path) { return $path }
+    }
+
+    $cmd = Get-Command $Name -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+
+    return $null
+}
+
+function Resolve-WinGetPackageExe {
+    param(
+        [Parameter(Mandatory)]
+        [string]$PackageIdPart,
+
+        [Parameter(Mandatory)]
+        [string]$ExeFileName
+    )
+
+    $base = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Packages'
+    if (-not (Test-Path -LiteralPath $base)) { return $null }
+
+    foreach ($pkg in Get-ChildItem -LiteralPath $base -Directory -ErrorAction SilentlyContinue) {
+        if ($pkg.Name -notlike "*$PackageIdPart*") { continue }
+
+        $direct = Join-Path $pkg.FullName $ExeFileName
+        if (Test-Path -LiteralPath $direct) { return $direct }
+
+        foreach ($sub in Get-ChildItem -LiteralPath $pkg.FullName -Directory -ErrorAction SilentlyContinue) {
+            $nested = Join-Path $sub.FullName $ExeFileName
+            if (Test-Path -LiteralPath $nested) { return $nested }
+        }
+    }
+
+    $cmd = Get-Command $ExeFileName -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+
+    return $null
+}
+
+function Repair-KanataTangledFiles {
+    param(
+        [string]$KanataDir = $script:KanataDir
+    )
+
+    if (-not $KanataDir) {
+        $KanataDir = Join-Path $env:USERPROFILE '.config\kanata'
+    }
+
+    $scriptsFwd = (Join-Path $env:USERPROFILE '.config\scripts') -replace '\\', '/'
+    $olkFwd = (Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\olk.exe') -replace '\\', '/'
+    $brokenScripts = '(replace-regexp-in-string "\\\\" "/" (expand-file-name "~/.config/scripts"))'
+
+    foreach ($kbdName in @('kanata.kbd', 'kanata-plain.kbd', 'external.kbd')) {
+        $kbdPath = Join-Path $KanataDir $kbdName
+        if (-not (Test-Path -LiteralPath $kbdPath)) { continue }
+
+        $kbdText = Get-Content -LiteralPath $kbdPath -Raw
+        $kbdText = $kbdText.Replace('<<config-scripts-fwd>>', $scriptsFwd).Replace($brokenScripts, $scriptsFwd)
+        $kbdText = $kbdText.Replace('<<local-windowsapps-olk>>', $olkFwd)
+        if ($kbdText -match 'expand-file-name "~/AppData/Local/Microsoft/WindowsApps/olk') {
+            $kbdText = [regex]::Replace(
+                $kbdText,
+                '\(replace-regexp-in-string "\\\\" "/" \(expand-file-name "~/AppData/Local/Microsoft/WindowsApps/olk\.exe"\)\)',
+                $olkFwd)
+        }
+        Set-Content -LiteralPath $kbdPath -Value $kbdText -NoNewline
+    }
+}
+
+function Get-OrgPreexecuteNowebElPath {
+    Join-Path $script:ConfigScriptsRoot 'utility\org-preexecute-noweb-blocks.el'
+}
+
+function Test-OrgUsesNoweb {
+    param([Parameter(Mandatory)][string]$OrgPath)
+    $raw = Get-Content -LiteralPath $OrgPath -Raw -ErrorAction SilentlyContinue
+    return ($raw -match '(?m):noweb\s+yes')
+}
+
+function Get-ConfigOrgDriftMap {
+    [ordered]@{
+        'komorebi\komorebi.org'                 = @('komorebi\komorebi.json', 'komorebi\komorebi.bar.json')
+        'kanata\kanata.org'                     = @('kanata\kanata.kbd', 'kanata\kanata-plain.kbd')
+        'doom\init.org'                         = @('doom\init.el', 'doom\packages.el')
+        'doom\config.org'                       = @('doom\config.el')
+        'wtq\wtq.org'                           = @('wtq\wtq.jsonc')
+        'starship\starship.org'                 = @('starship\starship.toml')
+        'git\git.org'                           = @('git\config')
+        'espanso\espanso.org'                   = @('espanso\config\default.yml', 'espanso\match\base.yml')
+        'vscode\vscode.org'                     = @('vscode\settings.json', 'vscode\keybindings.json')
+        'windsurf\windsurf.org'                 = @('windsurf\settings.json', 'windsurf\keybindings.json')
+        'wezterm\wezterm.org'                   = @('wezterm\wezterm.lua')
+        'tridactyl\tridactyl.org'               = @('tridactyl\.tridactylrc', 'tridactyl\native\tridactyl.json')
+        'everything\everything.org'             = @('everything\Everything.ini')
+        'windows-terminal\windows-terminal.org' = @('windows-terminal\settings.json')
+        'powershell\powershell.org'             = @('powershell\Microsoft.PowerShell_profile.ps1')
+        'flowlauncher\flowlauncher.org'         = @('flowlauncher\settings\Settings.json')
+        'hermes\hermes.org'                     = @('hermes\config.yaml', 'hermes\.gitignore')
+        'scripts\scripts.org'                 = @(
+            'scripts\_lib\config-paths.ps1'
+            'scripts\utility\tangle-configs.ps1'
+            'scripts\utility\verify-org-tangle-sync.ps1'
+        )
+    }
+}
+
+function Invoke-EmacsOrgTangle {
+    param(
+        [Parameter(Mandatory)][string]$EmacsExe,
+        [Parameter(Mandatory)][string]$OrgPath
+    )
+
+    $fwd = $OrgPath -replace '\\', '/'
+    $emacsArgs = @(
+        '--batch'
+        '--eval', '(require ''org)'
+        '--eval', '(require ''ob-tangle)'
+        '--eval', '(require ''ob-python nil t)'
+        '--eval', '(setq coding-system-for-write ''utf-8-unix)'
+        '--eval', '(setq org-confirm-babel-evaluate nil)'
+    )
+
+    if ((Test-OrgUsesNoweb -OrgPath $OrgPath) -and (Test-Path -LiteralPath (Get-OrgPreexecuteNowebElPath))) {
+        $nowebEl = (Get-OrgPreexecuteNowebElPath) -replace '\\', '/'
+        $emacsArgs += '--load', $nowebEl
+        $emacsArgs += '--eval', '(my/org-preexecute-noweb-blocks)'
+    }
+
+    $emacsArgs += $fwd
+    $emacsArgs += '--eval', '(org-babel-tangle)'
+
+    $old = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    $out = & $EmacsExe @emacsArgs 2>&1
+    $ErrorActionPreference = $old
+    return ($out -join "`n")
+}
+#+end_src
+
+The scripts directory contains the user-owned automation glue for the Windows
+desktop stack, organized into flat, purpose-driven directories:
+
+- =_lib/= -- Shared path and helper utilities
+- =ai/= -- AI service control scripts
+- =basic-memory/= -- MCP server management scripts
+- =himalaya/= -- Email credential automation helpers
+- =kanata/= -- Input handling and hotkey support actions
+- =komorebi/= -- Window manager layout and behavior configuration
+- =phoneme/= -- Speech-to-text journaling integration
+- =remote/= -- SSH and remote terminal administration
+- =startup/= -- Desktop initialization and shell watchdogs
+- =utility/= -- System maintenance and org tangling tools
+- =wtq/= -- Quake terminal custom launchers
+- =archive/= -- Superseded and one-off administrative scripts
+
+All scripts document their trigger and behavior inline. Each active file has a
+=**= section below with *Purpose*, *Trigger*, and (where useful) a suggested
+shell alias. Generated =.ps1= / =.vbs= headers mirror that summary.
+
+* Script inventory
+
+| Script | Purpose | Trigger | Suggested alias |
+|--------+---------+---------+-----------------|
+| =utility/tangle-configs.ps1= | Batch-tangle all literate =~/.config= *.org= | Manual; =tangle all= | =tangle all= (exists) |
+| =utility/verify-org-tangle-sync.ps1= | Drift-check tangled org outputs | After editing =.org= | =tangle-check= |
+| =utility/org-preexecute-noweb-blocks.el= | Pre-run noweb name blocks before tangle (=kanata.org=) | Used by tangle / =tangle-check= | — |
+| =basic-memory/start-basic-memory-server.ps1= | Start Basic Memory MCP on :8765 if down | Login VBS; manual test | =basic-memory= |
+| =utility/export-basic-memory-docs.ps1= | Export Denote .org -> .md for Basic Memory | After editing canonical .org | =bm-docs= |
+| =utility/verify-pkm-integrity.ps1= | Validate PKM system: links, files, git orphans | Weekly / on demand | =pkm-check= |
+| =utility/org-capture.ps1= | PowerShell fallback for Emacs org-capture (replaced by .vbs for qutebrowser) | Manual/debug | — |
+| =utility/org-capture.vbs= | Fast bridge between qutebrowser and Emacs org-capture (~20ms) | Qutebrowser spawn binds | — |
+| =startup/startup-orchestrator.vbs= | Timed launch of all login apps (3 groups) | ProgramData Startup | — (sole startup entry) |
+| =startup/start-menu-killer.ps1= | Kill Start Menu and Search UI watchdog loop | Startup orchestrator | — |
+| =kanata/focus-or-launch.ps1= | Focus / launch / minimize app toggle | Kanata LWin layer via =run-powershell-silent.vbs= | — (hotkey only) |
+| =kanata/toggle-kanata-profile.ps1= | Swap =kanata.kbd= ↔ =kanata-plain.kbd= (tray shows all 3) | =Ctrl+Shift+NumLock= | — |
+| =kanata/toggle-external-kbd.ps1= | Swap =kanata.kbd= ↔ =external.kbd= (tray shows all 3) | =Ctrl+Alt+Shift+Win+Enter= | — |
+| =kanata/emacs-window-focus.ps1= | Win32 =SetForegroundWindow= for Emacs frames by title | Dot-sourced by emacs-home/notes | — |
+| =kanata/emacs-home-frame.ps1= | Emacs Home frame create / focus / minimize | =LWin+Enter= | — |
+| =kanata/emacs-notes.ps1= | Journal workspace frame | =LWin+J= | — |
+| =kanata/emacs-daily-review.ps1= | Daily review: agenda + plan side-by-side | =LWin+Shift+J= | — |
+| =kanata/emacs-quick-task.ps1= | Open tasks.org | =LWin+T= | — |
+| =kanata/cycle-send-monitor.ps1= | Send focused window to other monitor + follow | =LAlt+Space= | — |
+| =kanata/focus-workspace-dual.ps1= | (Legacy) Switch workspace N on both monitors via PS | Replaced by =komorebic-dual-wrapper.vbs= | — |
+| =komorebi/toggle-komorebi-bar.ps1= | Toggle Komorebi bar + restart WM | =LAlt+b= | — |
+| =komorebi/enforce-windows-settings.ps1= | Enforce hover-to-focus and disable Aero Snap | Logon / mid-session | — |
+| =komorebi/run-powershell-silent.vbs= | Silent PowerShell wrapper | Kanata launcher layer | — |
+| =komorebi/komorebic-wrapper.vbs= | Silent =komorebic= dispatcher | Kanata Komorebi layer | — |
+| =komorebi/komorebic-dual-wrapper.vbs= | =focus-monitor-workspace= on both monitors (no PS overhead) | =LAlt+Shift+1..7= | — |
+| =phoneme/phoneme-journal.ps1= | Append Phoneme voice notes to today's journal.org | Phoneme JSON callback | — |
+| =phoneme/phoneme-denote.ps1= | Create Denote note (voice tag) from Phoneme transcript, no journal entry | Phoneme JSON callback | — |
+| =phoneme/start-phoneme-dev.ps1= | Daemon + Vite HMR + Tauri dev (3 windows; WezTerm if available) | =dev-phoneme= | =dev-phoneme= |
+| =remote/enable-ttyd-firewall.ps1= | Firewall rule for ttyd :7681 | Once after winget install | — (admin) |
+| =remote/ttyd-toggle.ps1= | Start / stop / status browser terminal | On demand from phone | =webterm= |
+| =himalaya/get-pass.ps1= | Retrieve email app password from Credential Manager | Himalaya auth | — |
+| =himalaya/set-pass.ps1= | Store email app password in Credential Manager | Manual run | — |
+| =../himalaya/bin/himalaya.exe= | CLI email client (IMAP/SMTP) | Hermes himalaya skill; Telegram | — (PATH) |
+| =hermes/hermes-gateway-healthcheck.ps1= | Watch Hermes gateway for silent failure (no msg activity >30m), restart if stuck | Every 2 min by healthcheck daemon | — |
+| =hermes/hermes-gateway-healthcheck-daemon.ps1= | Persistent background loop replacing scheduled task (no CMD popup flashes) | Startup orchestrator Group 4 | — |
+| =startup/startup-orchestrator.ps1= | PowerShell master startup script (replaces .vbs with richer logic) | ProgramData Startup (admin copy) | — |
+
+Aliases marked “—” are intentionally hotkey-only so the shell stays uncluttered.
+Remote one-shot installers need elevation; aliases call them out with warnings.
+
+* Shell aliases (PowerShell)
+
+Implemented in [[file:../powershell/powershell.org::*Config script shortcuts][powershell.org → Config script shortcuts]] (tangle =powershell.org= to refresh the profile).
+
+| Alias | Runs | Notes |
+|-------+------+-------|
+| =tangle= | =Invoke-ConfigTangle= | =tangle all=, =tangle kanata=, =tangle -DryRun all= |
+| =tangle-check= | =verify-org-tangle-sync.ps1= | Read-only drift check (default); =-ReadOnly:$false= fixes on disk |
+| =tangle-validate= | =tangle-configs.ps1 -Validate= | Tangle all, then syntax-check outputs |
+| =deploy-startup= | Copy =startup-orchestrator.vbs= to ProgramData (admin) | After tangle scripts |
+| =basic-memory= | =start-basic-memory-server.ps1= | Safe to run anytime (idempotent) |
+| =bm-docs= | =export-basic-memory-docs.ps1= | Export Denote .org -> .md for Basic Memory |
+| =pkm-check= | =verify-pkm-integrity.ps1= | Validate PKM system health |
+| =webterm= | =ttyd-toggle.ps1= | =webterm start=, =webterm stop=, =webterm status= |
+| =dev-phoneme= | =start-phoneme-dev.ps1= | Full Phoneme dev stack (daemon + Vite + Tauri) |
+
+Not aliased: =enable-ttyd-firewall.ps1= (admin, once). One-shot scripts:
+[[id:archived-remote-setup][Archived remote setup]], [[id:archived-utility-scripts][Archived utility scripts]].
+=komorebi/toggle-komorebi-bar.ps1=, Kanata/Emacs launchers.
+
+* WSL Ubuntu Configuration
+
+Installed (=wsl -u root apt install=):
+
+| Tool | Package | Binary name (Ubuntu) | Notes |
+|------+---------+----------------------+-------|
+| bat | =bat= | =batcat= | Naming conflict with =bacula= |
+| eza | =eza= | =eza= | |
+| fzf | =fzf= | =fzf= | |
+| fd-find | =fd-find= | =fdfind= | |
+| zoxide | =zoxide= | =zoxide= | |
+| starship | (curl script) | =/usr/local/bin/starship= | |
+
+=.bashrc= additions (Starship / zoxide init + eza/bat/fd aliases):
+See [[denote:20260518T234500][WSL Ubuntu]] or =/home/namef/.bashrc= (lines 119-131).
+
+Starship config is shared with Windows via =/mnt/c/Users/$WIN_USER/.config/starship/starship.toml= (set =WIN_USER= in WSL; see Denote WSL Ubuntu note)
+(=STARSHIP_CONFIG= env var). No Emacs, Node, or other tooling duplicated
+in the WSL environment.
+
+* Common Startup (=ProgramData=)
+
+Windows runs items from the *all-users* startup folder at every interactive logon
+(elevated copy required to add or change files there):
+
+- =C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\=
+
+This is distinct from per-user startup (=shell:startup= →
+=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\=), which is useful for
+entries that should follow one account only.
+
+** startup-orchestrator.vbs
+
+*Purpose:* Single VBS script that replaces all individual startup shortcuts.
+Launches everything in four timed groups to avoid overloading the system at
+login and to satisfy the WTQ-before-Komorebi ordering constraint.
+
+*Trigger:* Copied to =C:\ProgramData\...\StartUp\startup-orchestrator.vbs=
+(all other shortcuts in that folder are removed).
+
+*Sequence:*
+- **Group 1 (immediate):** Tailscale, Ollama (local LLM server), Basic Memory (MCP server), Emacs daemon
+- **5s delay**
+- **Group 2:** Espanso, Kanata (Kanata runs from its own dir for DLLs/.kbd)
+- **5s delay**
+- **Group 3:** WTQ (quake terminal) → 7s → Komorebi
+- **5s delay**
+- **Group 4:** Hermes Telegram gateway (needs Ollama + BM running first)
+
+Total wait: ~22 seconds. Each app is started with =WScript.Shell.Run= (window
+style 0 = hidden, no wait).
+
+#+begin_src vbscript :tangle startup/startup-orchestrator.vbs :mkdirp yes
+' startup-orchestrator.vbs — Master startup script.
+' Replaces all individual shortcuts in the ProgramData Startup folder.
+' User paths use %USERPROFILE% / %LOCALAPPDATA% (not a hardcoded account name).
+
+Function FindFirstExistingFile(candidates)
+  Dim fso, i
+  Set fso = CreateObject("Scripting.FileSystemObject")
+  For i = 0 To UBound(candidates)
+    If fso.FileExists(candidates(i)) Then
+      FindFirstExistingFile = candidates(i)
+      Exit Function
+    End If
+  Next
+End Function
+
+Function FindWinGetExe(packageIdPart, exeFileName)
+  Dim sh, fso, base, pkg, direct, subfolder
+  Set sh = CreateObject("WScript.Shell")
+  Set fso = CreateObject("Scripting.FileSystemObject")
+  base = sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Microsoft\WinGet\Packages"
+  If Not fso.FolderExists(base) Then Exit Function
+  For Each pkg In fso.GetFolder(base).SubFolders
+    If InStr(1, pkg.Name, packageIdPart, vbTextCompare) > 0 Then
+      direct = pkg.Path & "\" & exeFileName
+      If fso.FileExists(direct) Then
+        FindWinGetExe = direct
+        Exit Function
+      End If
+      For Each subfolder In fso.GetFolder(pkg.Path).SubFolders
+        direct = subfolder.Path & "\" & exeFileName
+        If fso.FileExists(direct) Then
+          FindWinGetExe = direct
+          Exit Function
+        End If
+      Next
+    End If
+  Next
+End Function
+
+Set oShell = CreateObject("WScript.Shell")
+Dim profile, configRoot, kanataDir, emacsRun, espansoExe, kanataExe, wtqExe
+
+profile = oShell.ExpandEnvironmentStrings("%USERPROFILE%")
+configRoot = profile & "\.config"
+kanataDir = configRoot & "\kanata"
+
+emacsRun = FindFirstExistingFile(Array( _
+  "C:\Program Files\Emacs\emacs-30.2\bin\runemacs.exe", _
+  "C:\Program Files\Emacs\emacs-30.1\bin\runemacs.exe" _
+))
+espansoExe = oShell.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Programs\Espanso\espansod.exe"
+kanataExe = kanataDir & "\kanata_windows_gui_wintercept_cmd_allowed_x64.exe"
+wtqExe = FindWinGetExe("flyingpie.windows-terminal-quake", "wtq.exe")
+
+' ===== Group 1: Background services (no dependencies) =====
+' Tailscale VPN
+oShell.Run """C:\Program Files\Tailscale\tailscale-ipn.exe""", 0, False
+
+' Ollama (local LLM server)
+Dim ollamaExe
+ollamaExe = oShell.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Programs\Ollama\ollama.exe"
+If CreateObject("Scripting.FileSystemObject").FileExists(ollamaExe) Then
+  oShell.Run """" & ollamaExe & """ serve", 0, False
+End If
+
+' Basic Memory MCP server
+Dim ps1, pwsh
+ps1  = profile & "\.config\scripts\basic-memory\start-basic-memory-server.ps1"
+pwsh = "C:\Program Files\PowerShell\7\pwsh.exe"
+oShell.Run """" & pwsh & """ -ExecutionPolicy Bypass -NonInteractive -WindowStyle Hidden -File """ & ps1 & """", 0, False
+
+' Emacs daemon (background, no window)
+If emacsRun <> "" Then
+  oShell.Run """" & emacsRun & """ --init-directory """ & configRoot & "\emacs"" --daemon --chdir """ & profile & """", 0, False
+End If
+
+WScript.Sleep 5000
+
+' ===== Group 2: Lightweight user apps =====
+' Espanso (text expander daemon)
+If espansoExe <> "" And CreateObject("Scripting.FileSystemObject").FileExists(espansoExe) Then
+  oShell.Run """" & espansoExe & """ launcher", 0, False
+End If
+
+' Kanata (keyboard remapper) — needs working dir for .kbd config and DLLs
+' Pass all 3 configs so the tray icon shows switchable profiles.
+Dim kanataCfg1, kanataCfg2, kanataCfg3
+kanataCfg1 = kanataDir & "\kanata.kbd"
+kanataCfg2 = kanataDir & "\external.kbd"
+kanataCfg3 = kanataDir & "\kanata-plain.kbd"
+If kanataExe <> "" And CreateObject("Scripting.FileSystemObject").FileExists(kanataExe) Then
+  oShell.CurrentDirectory = kanataDir
+  oShell.Run """" & kanataExe & """ -c """ & kanataCfg1 & """ -c """ & kanataCfg2 & """ -c """ & kanataCfg3 & """", 0, False
+End If
+
+WScript.Sleep 5000
+
+' ===== Group 3: WTQ → Komorebi (critical order) =====
+' WTQ — creates quake terminal window and overrides its title to "Quake"
+If wtqExe <> "" Then
+  oShell.Run """" & wtqExe & """", 0, False
+End If
+
+' Wait for WTQ to attach and set the window title
+WScript.Sleep 7000
+
+' Komorebi — starts after quake title is set, so the Title:Quake ignore rule
+' matches on first evaluation (no flash, no permanent management).
+oShell.Run """C:\Program Files\komorebi\bin\komorebic-no-console.exe"" start --ffm --bar", 0, False
+
+' ===== Group 4: AI services (after BM + Ollama) =====
+WScript.Sleep 5000
+
+' Hermes Telegram gateway — needs Ollama + BM running first
+Dim hermesExe
+hermesExe = oShell.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\hermes\hermes-agent\venv\Scripts\hermes.exe"
+If CreateObject("Scripting.FileSystemObject").FileExists(hermesExe) Then
+  oShell.CurrentDirectory = profile
+  oShell.Run """" & pwsh & """ -WindowStyle Hidden -Command ""& '" & hermesExe & "' gateway run --replace""", 0, False
+End If
+#+end_src
+
+To deploy after tangling, remove all old shortcuts and copy the orchestrator
+into the ProgramData Startup folder (requires elevation):
+
+#+begin_src powershell :tangle no
+$startup = "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp"
+Remove-Item "$startup\basic-memory.vbs", "$startup\espanso.lnk", "$startup\kanata_windows_gui_wintercept_cmd_allowed_x64.exe.lnk", "$startup\komorebi.lnk", "$startup\runemacs.exe --daemon.lnk", "$startup\Tailscale.lnk", "$startup\wtq.lnk" -Force
+Copy-Item "$env:USERPROFILE\.config\scripts\startup\startup-orchestrator.vbs" "$startup\startup-orchestrator.vbs" -Force
+#+end_src
+
+** start-menu-killer.ps1
+
+*Purpose:* Active watchdog killing the Win11 search dropdown and Start widgets on a 1-second cycle to prevent interference with komorebi/WTQ layouts.
+
+*Trigger:* Launched at logon by =startup-orchestrator.ps1=.
+
+#+begin_src powershell :tangle startup/start-menu-killer.ps1
+# Watchdog: kill StartMenuExperienceHost + SearchHost on a 1s cycle.
+# Launched at logon by startup-orchestrator.ps1.
+# See scripts.org → "start-menu-killer.ps1" for rationale and disable steps.
+
+$ErrorActionPreference = 'SilentlyContinue'
+$targets = @('StartMenuExperienceHost', 'SearchHost')
+
+while ($true) {
+    Get-Process -Name $targets -ErrorAction SilentlyContinue |
+        Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 1
+}
+#+end_src
+
+* Kanata Scripts
+
+** focus-or-launch.ps1
+
+*Purpose:* Focus the oldest window for =-ProcessName=, launch =-LaunchPath= if none exists, or minimize when already focused (three-state toggle). Used for *single-window* apps only — Emacs frame launchers use [[file:kanata/emacs-home-frame.ps1][emacs-home-frame.ps1]] / [[file:kanata/emacs-notes.ps1][emacs-notes.ps1]] instead.
+
+*Trigger:* Kanata LWin launcher layer via [[id:run-powershell-silent][run-powershell-silent.vbs]] — e.g. Firefox, Outlook, Phone Link.
+
+*Parameters:* =-ProcessName= (required), =-LaunchPath= (required), =-Arguments= (optional).
+
+*Alias:* None (hotkey-driven).
+
+#+begin_src powershell :tangle kanata/focus-or-launch.ps1
+# Focus the oldest window of -ProcessName if one exists, or launch -LaunchPath.
+# Pressing the hotkey while already focused on the app minimizes it (toggle).
+# Invoked from Kanata (via run-powershell-silent.vbs) with -ProcessName, -LaunchPath, and optional -Arguments.
+
+param(
+    [Parameter(Mandatory = $true)]
+    [string]$ProcessName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$LaunchPath,
+
+    [Parameter(Mandatory = $false)]
+    [string]$Arguments = ''
+)
+
+$ErrorActionPreference = 'SilentlyContinue'
+
+Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+
+public static class WindowFocus {
+    [DllImport("user32.dll")] public static extern bool   ShowWindowAsync(IntPtr hWnd, int nCmdShow);
+    [DllImport("user32.dll")] public static extern bool   SetForegroundWindow(IntPtr hWnd);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern uint   GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+}
+'@
+
+$windows = @(
+    Get-Process -Name $ProcessName |
+    Where-Object  { $_.MainWindowHandle -ne [IntPtr]::Zero } |
+    Sort-Object StartTime
+)
+
+if ($windows.Count -eq 0) {
+    # No existing window — launch the app.
+    if ($Arguments) {
+        Start-Process -FilePath $LaunchPath -ArgumentList $Arguments
+    } else {
+        Start-Process -FilePath $LaunchPath
+    }
+    exit
+}
+
+$foregroundHandle = [WindowFocus]::GetForegroundWindow()
+[uint32]$foregroundPid = 0
+[WindowFocus]::GetWindowThreadProcessId($foregroundHandle, [ref]$foregroundPid) | Out-Null
+
+$focusedWindow = $windows | Where-Object { $_.Id -eq $foregroundPid } | Select-Object -First 1
+
+if ($focusedWindow) {
+    # Already focused — minimize to toggle it away (SW_MINIMIZE = 6).
+    [WindowFocus]::ShowWindowAsync($focusedWindow.MainWindowHandle, 6) | Out-Null
+} else {
+    # Not focused — restore and bring the oldest window to the foreground (SW_RESTORE = 9).
+    $window = $windows | Select-Object -First 1
+    [WindowFocus]::ShowWindowAsync($window.MainWindowHandle, 9)      | Out-Null
+    [WindowFocus]::SetForegroundWindow($window.MainWindowHandle)     | Out-Null
+}
+#+end_src
+
+** toggle-kanata-profile.ps1
+
+*Purpose:* Switch the running Kanata instance between full layers (=kanata.kbd=) and passthrough (=kanata-plain.kbd=).
+
+*Trigger:* =Ctrl+Shift+NumLock= from either profile (bound in Kanata).
+
+*Behavior:* Reads the active config from the process command line, stops all =kanata*.exe= processes, restarts with the target config first and all 3 configs appended (=kanata.kbd=, =external.kbd=, =kanata-plain.kbd=) so the tray icon shows all switchable profiles. Notifies via BurntToast or a tray balloon (“Kanata ON” / “Kanata OFF”).
+
+*Alias:* None.
+
+#+begin_src powershell :tangle kanata/toggle-kanata-profile.ps1
+# Toggle between Kanata main and plain profiles.
+# Intended trigger: Ctrl+Shift+NumLock from either profile.
+
+$ErrorActionPreference = "Stop"
+
+$kanataDir = Join-Path $env:USERPROFILE '.config\kanata'
+$mainConfig = Join-Path $kanataDir "kanata.kbd"
+$extConfig = Join-Path $kanataDir "external.kbd"
+$plainConfig = Join-Path $kanataDir "kanata-plain.kbd"
+$guiExe = Join-Path $kanataDir "kanata_windows_gui_wintercept_cmd_allowed_x64.exe"
+$ttyExe = Join-Path $kanataDir "kanata_windows_tty_wintercept_cmd_allowed_x64.exe"
+
+function Show-ProfileNotification {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Message
+  )
+
+  if (Get-Command -Name New-BurntToastNotification -ErrorAction SilentlyContinue) {
+    New-BurntToastNotification -Text "Keyboard Profile", $Message | Out-Null
+    return
+  }
+
+  Add-Type -AssemblyName System.Windows.Forms
+  Add-Type -AssemblyName System.Drawing
+
+  $notify = New-Object System.Windows.Forms.NotifyIcon
+  $notify.Icon = [System.Drawing.SystemIcons]::Information
+  $notify.BalloonTipTitle = "Keyboard Profile"
+  $notify.BalloonTipText = $Message
+  $notify.Visible = $true
+  $notify.ShowBalloonTip(2000)
+  Start-Sleep -Milliseconds 2200
+  $notify.Dispose()
+}
+
+$exeToUse = if (Test-Path -LiteralPath $guiExe) { $guiExe } else { $ttyExe }
+if (-not (Test-Path -LiteralPath $exeToUse)) {
+  throw "No Kanata executable found in $kanataDir"
+}
+
+$running = Get-CimInstance Win32_Process -Filter "Name LIKE 'kanata%exe'" -ErrorAction SilentlyContinue
+$commandLines = @($running | ForEach-Object { $_.CommandLine }) -join "`n"
+
+# Detect active profile by checking the first -c argument.
+$isPlainActive = ($commandLines -match '\.exe" -c\s+kanata-plain\.kbd') -or
+                 ($commandLines -match '\.exe -c\s+kanata-plain\.kbd')
+
+$targetConfig = if ($isPlainActive) { $mainConfig } else { $plainConfig }
+$profileLabel = if ($targetConfig -eq $mainConfig) { "Kanata ON" } else { "Kanata OFF" }
+
+# Build arg list: target config first (active profile), others follow (for tray).
+$otherConfigs = @($mainConfig, $extConfig, $plainConfig) | Where-Object { $_ -ne $targetConfig }
+$allArgs = @("-c", $targetConfig)
+foreach ($cfg in $otherConfigs) {
+  $allArgs += @("-c", $cfg)
+}
+
+# Stop all current Kanata instances first.
+if ($running) {
+  $running | ForEach-Object {
+    try {
+      Stop-Process -Id $_.ProcessId -Force -ErrorAction Stop
+    } catch {
+      # If one process exits between enumeration and stop, continue.
+    }
+  }
+
+  Start-Sleep -Milliseconds 250
+}
+
+Start-Process -FilePath $exeToUse `
+  -ArgumentList $allArgs `
+  -WorkingDirectory $kanataDir `
+  -WindowStyle Hidden
+
+Show-ProfileNotification -Message $profileLabel
+#+end_src
+
+*** toggle-external-kbd.ps1
+
+*Purpose:* Switch between laptop (main) and external keyboard (ext) Kanata profiles.
+
+*Trigger:* =Ctrl+Alt+Shift+Win+Enter= from any layer (bound in Kanata via =@ret-ext-toggle=, =@kwm-ret-ext-toggle=, =@kwl-ret-ext-toggle=).
+
+*Behavior:* Same detection + all-configs-startup pattern as =toggle-kanata-profile.ps1=. The tray icon shows all 3 profiles after switch.
+
+*Alias:* =~(wez)_ ext-toggle= / =ret-ext-toggle= / =kwm-ret-ext-toggle= / =kwl-ret-ext-toggle= (Kanata).
+
+#+begin_src powershell :tangle kanata/toggle-external-kbd.ps1
+# Toggle between Kanata main and external keyboard profiles.
+# Intended trigger: Ctrl+Alt+Shift+Win+Enter from either profile.
+
+$ErrorActionPreference = "Stop"
+
+$kanataDir = Join-Path $env:USERPROFILE '.config\kanata'
+$mainConfig = Join-Path $kanataDir "kanata.kbd"
+$extConfig = Join-Path $kanataDir "external.kbd"
+$plainConfig = Join-Path $kanataDir "kanata-plain.kbd"
+$guiExe = Join-Path $kanataDir "kanata_windows_gui_wintercept_cmd_allowed_x64.exe"
+$ttyExe = Join-Path $kanataDir "kanata_windows_tty_wintercept_cmd_allowed_x64.exe"
+
+function Show-ProfileNotification {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Message
+  )
+
+  if (Get-Command -Name New-BurntToastNotification -ErrorAction SilentlyContinue) {
+    New-BurntToastNotification -Text "Keyboard Profile", $Message | Out-Null
+    return
+  }
+
+  Add-Type -AssemblyName System.Windows.Forms
+  Add-Type -AssemblyName System.Drawing
+
+  $notify = New-Object System.Windows.Forms.NotifyIcon
+  $notify.Icon = [System.Drawing.SystemIcons]::Information
+  $notify.BalloonTipTitle = "Keyboard Profile"
+  $notify.BalloonTipText = $Message
+  $notify.Visible = $true
+  $notify.ShowBalloonTip(2000)
+  Start-Sleep -Milliseconds 2200
+  $notify.Dispose()
+}
+
+$exeToUse = if (Test-Path -LiteralPath $guiExe) { $guiExe } else { $ttyExe }
+if (-not (Test-Path -LiteralPath $exeToUse)) {
+  throw "No Kanata executable found in $kanataDir"
+}
+
+$running = Get-CimInstance Win32_Process -Filter "Name LIKE 'kanata%exe'" -ErrorAction SilentlyContinue
+$commandLines = @($running | ForEach-Object { $_.CommandLine }) -join "`n"
+
+# Detect active profile by checking the first -c argument.
+$isExtActive = ($commandLines -match '\.exe" -c\s+external\.kbd') -or
+               ($commandLines -match '\.exe -c\s+external\.kbd')
+
+$targetConfig = if ($isExtActive) { $mainConfig } else { $extConfig }
+$profileLabel = if ($targetConfig -eq $mainConfig) { "Main Profile" } else { "External Keyboard" }
+
+# Build arg list: target config first (active profile), others follow (for tray).
+$otherConfigs = @($mainConfig, $extConfig, $plainConfig) | Where-Object { $_ -ne $targetConfig }
+$allArgs = @("-c", $targetConfig)
+foreach ($cfg in $otherConfigs) {
+  $allArgs += @("-c", $cfg)
+}
+
+# Stop all current Kanata instances first.
+if ($running) {
+  $running | ForEach-Object {
+    try {
+      Stop-Process -Id $_.ProcessId -Force -ErrorAction Stop
+    } catch {
+    }
+  }
+
+  Start-Sleep -Milliseconds 250
+}
+
+Start-Process -FilePath $exeToUse `
+  -ArgumentList $allArgs `
+  -WorkingDirectory $kanataDir `
+  -WindowStyle Hidden
+
+Show-ProfileNotification -Message $profileLabel
+#+end_src
+
+** emacs-window-focus.ps1
+
+*Purpose:* Find a visible Emacs top-level window by title and call =ShowWindowAsync= +
+=SetForegroundWindow=. Emacs is one process with multiple frames; =Get-Process
+.MainWindowHandle= is not enough for =LWin+Enter= / =LWin+J=.
+
+*Trigger:* Dot-sourced from =emacs-home-frame.ps1=, =emacs-notes.ps1=, =emacs-scratch-frame.ps1=.
+
+*Alias:* None.
+
+#+begin_src powershell :tangle kanata/emacs-window-focus.ps1
+# Win32 foreground helper for multi-frame Emacs (used by emacs-home/notes/howm.ps1).
+# Emacs has one process but several top-level windows; Get-Process MainWindowHandle
+# is not the frame we want. Match by window title instead.
+
+function Set-EmacsFrameForeground {
+    param(
+        [string]$TitleEquals,
+        [string]$TitleContains
+    )
+
+    if (-not $TitleEquals -and -not $TitleContains) { return }
+
+    $emacsProc = Get-Process -Name emacs -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $emacsProc) { return }
+
+    Add-Type -TypeDefinition @"
+using System;
+using System.Text;
+using System.Runtime.InteropServices;
+
+public static class EmacsWindowFocus {
+    public static IntPtr Match = IntPtr.Zero;
+    public static uint TargetPid;
+    public static string TitleEquals;
+    public static string TitleContains;
+
+    public delegate bool EnumProc(IntPtr hWnd, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern bool EnumWindows(EnumProc proc, IntPtr lParam);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern int GetWindowText(IntPtr hWnd, StringBuilder sb, int maxCount);
+
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
+
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    public static bool EnumCallback(IntPtr hWnd, IntPtr lParam) {
+        uint pid = 0;
+        GetWindowThreadProcessId(hWnd, out pid);
+        if (pid != TargetPid || !IsWindowVisible(hWnd)) return true;
+
+        var sb = new StringBuilder(512);
+        if (GetWindowText(hWnd, sb, sb.Capacity) <= 0) return true;
+        string title = sb.ToString();
+        if (title.Length == 0) return true;
+
+        bool ok = false;
+        if (!string.IsNullOrEmpty(TitleEquals))
+            ok = string.Equals(title, TitleEquals, StringComparison.Ordinal);
+        else if (!string.IsNullOrEmpty(TitleContains))
+            ok = title.IndexOf(TitleContains, StringComparison.OrdinalIgnoreCase) >= 0;
+
+        if (!ok) return true;
+        Match = hWnd;
+        return false;
+    }
+}
+"@ -ErrorAction SilentlyContinue | Out-Null
+
+    [EmacsWindowFocus]::Match = [IntPtr]::Zero
+    [EmacsWindowFocus]::TargetPid = [uint32]$emacsProc.Id
+    [EmacsWindowFocus]::TitleEquals = $TitleEquals
+    [EmacsWindowFocus]::TitleContains = $TitleContains
+    $callback = [EmacsWindowFocus+EnumProc] { param($h, $l) [EmacsWindowFocus]::EnumCallback($h, $l) }
+    [EmacsWindowFocus]::EnumWindows($callback, [IntPtr]::Zero) | Out-Null
+
+    if ([EmacsWindowFocus]::Match -ne [IntPtr]::Zero) {
+        [EmacsWindowFocus]::ShowWindowAsync([EmacsWindowFocus]::Match, 9) | Out-Null
+        [EmacsWindowFocus]::SetForegroundWindow([EmacsWindowFocus]::Match) | Out-Null
+    }
+}
+#+end_src
+
+** emacs-home-frame.ps1
+
+*Purpose:* Own a single “Emacs Home” frame — create on first press, then focus or minimize.
+Does *not* call =focus-or-launch.ps1=; uses =emacsclient= + =my/home-frame-*= in Doom, then
+=Set-EmacsFrameForeground -TitleEquals 'Emacs Home'= from [[file:kanata/emacs-window-focus.ps1][emacs-window-focus.ps1]].
+
+*Trigger:* =LWin+Enter= (Kanata =lmet-launcher=). Requires Doom helpers =my/home-frame-*=,
+=my/raise-launcher-frame=.
+
+*Alias:* None.
+
+#+begin_src powershell :tangle kanata/emacs-home-frame.ps1
+# Create, focus, or minimize the Emacs Home frame.
+# Bound in the Kanata lmet-launcher layer to LWin + Enter.
+
+$ErrorActionPreference = 'SilentlyContinue'
+. (Join-Path $env:USERPROFILE '.config\scripts\_lib\config-paths.ps1')
+. (Join-Path $PSScriptRoot 'emacs-window-focus.ps1')
+
+$emacsClient  = Get-EmacsExecutable -Name emacsclient
+$emacsClientW = Get-EmacsExecutable -Name emacsclientw
+if (-not $emacsClientW) {
+    Write-Error 'emacsclientw.exe not found (checked Program Files Emacs installs and PATH)'
+    exit 1
+}
+
+Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+public static class WinFocus {
+    [DllImport("user32.dll")] public static extern bool   AllowSetForegroundWindow(int dwProcessId);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern uint   GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+}
+'@
+
+$status = & $emacsClient --eval '(my/home-frame-status)' 2>$null
+
+if ($status -notmatch '"(?:selected|exists)"') {
+    # ArgumentList must be a SINGLE STRING with explicit double quotes around
+    # the eval expression. If passed as an array, PowerShell splits on spaces
+    # and emacsclient sees `--eval (run-with-timer` → "End of file during
+    # parsing" + a stray untracked frame.
+    Start-Process -FilePath $emacsClientW `
+        -ArgumentList '--alternate-editor= -c -n -F "((name . \"Emacs Home\") (title . \"Emacs Home\"))" --eval "(run-with-timer 0 nil (lambda () (my/home-frame-setup)))"' `
+        -WorkingDirectory $env:USERPROFILE
+    exit
+}
+
+$emacsProc = Get-Process -Name emacs | Select-Object -First 1
+$fg        = [WinFocus]::GetForegroundWindow()
+[uint32]$fgPid = 0
+[WinFocus]::GetWindowThreadProcessId($fg, [ref]$fgPid) | Out-Null
+$emacsIsFg = $emacsProc -and ($fgPid -eq [uint32]$emacsProc.Id)
+
+if ($emacsIsFg -and $status -match '"selected"') {
+    & $emacsClient --eval '(my/home-minimize)' 2>$null
+} else {
+    if ($emacsProc) { [WinFocus]::AllowSetForegroundWindow($emacsProc.Id) | Out-Null }
+    & $emacsClient --eval '(my/home-raise)' 2>$null
+    Set-EmacsFrameForeground -TitleEquals 'Emacs Home'
+}
+#+end_src
+
+** emacs-notes.ps1
+
+*Purpose:* Own the journal workspace Emacs frame (create / focus / minimize).
+Same architecture as [[file:kanata/emacs-home-frame.ps1][emacs-home-frame.ps1]]; title match =journal.org= (Komorebi docs workspace).
+
+*Trigger:* =LWin+J= (Kanata =lmet-launcher=). Uses =my/notes-frame-*=, =my/raise-launcher-frame=.
+
+*Alias:* None.
+
+#+begin_src powershell :tangle kanata/emacs-notes.ps1
+# Create, focus, or minimize the journal workspace Emacs frame.
+# Bound in the Kanata lmet-launcher layer to LWin + J.
+
+$ErrorActionPreference = 'SilentlyContinue'
+. (Join-Path $env:USERPROFILE '.config\scripts\_lib\config-paths.ps1')
+. (Join-Path $PSScriptRoot 'emacs-window-focus.ps1')
+
+$emacsClient  = Get-EmacsExecutable -Name emacsclient
+$emacsClientW = Get-EmacsExecutable -Name emacsclientw
+if (-not $emacsClientW) {
+    Write-Error 'emacsclientw.exe not found (checked Program Files Emacs installs and PATH)'
+    exit 1
+}
+
+Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+public static class WinFocus {
+    [DllImport("user32.dll")] public static extern bool   AllowSetForegroundWindow(int dwProcessId);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern uint   GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+}
+'@
+
+$status = & $emacsClient --eval '(my/notes-frame-status)' 2>$null
+
+if ($status -notmatch '"(?:selected|exists)"') {
+    # ArgumentList must be a SINGLE STRING — see emacs-home-frame.ps1 for rationale.
+    Start-Process -FilePath $emacsClientW `
+        -ArgumentList '--alternate-editor= -c -n --eval "(run-with-timer 0 nil (lambda () (my/notes-frame-setup)))"' `
+        -WorkingDirectory $env:USERPROFILE
+    exit
+}
+
+$emacsProc = Get-Process -Name emacs | Select-Object -First 1
+$fg        = [WinFocus]::GetForegroundWindow()
+[uint32]$fgPid = 0
+[WinFocus]::GetWindowThreadProcessId($fg, [ref]$fgPid) | Out-Null
+$emacsIsFg = $emacsProc -and ($fgPid -eq [uint32]$emacsProc.Id)
+
+if ($emacsIsFg -and $status -match '"selected"') {
+    & $emacsClient --eval '(my/notes-minimize)' 2>$null
+} else {
+    if ($emacsProc) { [WinFocus]::AllowSetForegroundWindow($emacsProc.Id) | Out-Null }
+    & $emacsClient --eval '(my/notes-raise)' 2>$null
+    Set-EmacsFrameForeground -TitleContains 'journal.org'
+}
+#+end_src
+
+** emacs-daily-review.ps1
+
+*Purpose:* Open the daily review layout (agenda + today's plan side-by-side)
+in the notes workspace frame. Uses [[file:emacs-window-focus.ps1][emacs-window-focus.ps1]].
+
+*Trigger:* =LWin+Shift+J= (Kanata =lmet-launcher= =kwl-j= switch with lsft).
+
+*Alias:* None.
+
+#+begin_src powershell :tangle kanata/emacs-daily-review.ps1
+# Open the Emacs daily review (agenda + plan side-by-side).
+# Bound in the Kanata lmet-launcher layer to LWin + Shift + J.
+
+$ErrorActionPreference = 'SilentlyContinue'
+. (Join-Path $env:USERPROFILE '.config\scripts\_lib\config-paths.ps1')
+. (Join-Path $PSScriptRoot 'emacs-window-focus.ps1')
+
+$emacsClient  = Get-EmacsExecutable -Name emacsclient
+$emacsClientW = Get-EmacsExecutable -Name emacsclientw
+if (-not $emacsClientW) {
+    Write-Error 'emacsclientw.exe not found (checked Program Files Emacs installs and PATH)'
+    exit 1
+}
+
+Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+public static class WinFocus {
+    [DllImport("user32.dll")] public static extern bool   AllowSetForegroundWindow(int dwProcessId);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern uint   GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+}
+'@
+
+$status = & $emacsClient --eval '(my/notes-frame-status)' 2>$null
+
+if ($status -notmatch '"(?:selected|exists)"') {
+    Start-Process -FilePath $emacsClientW `
+        -ArgumentList '--alternate-editor= -c -n --eval "(run-with-timer 0 nil (lambda () (my/notes-daily-review)))"' `
+        -WorkingDirectory $env:USERPROFILE
+    exit
+}
+
+$emacsProc = Get-Process -Name emacs | Select-Object -First 1
+$fg        = [WinFocus]::GetForegroundWindow()
+[uint32]$fgPid = 0
+[WinFocus]::GetWindowThreadProcessId($fg, [ref]$fgPid) | Out-Null
+
+if ($emacsProc) { [WinFocus]::AllowSetForegroundWindow($emacsProc.Id) | Out-Null }
+& $emacsClient --eval '(progn (my/notes-raise) (my/notes-daily-review))' 2>$null
+Set-EmacsFrameForeground -TitleContains 'journal.org'
+#+end_src
+
+** emacs-quick-task.ps1
+
+*Purpose:* Open the Org quick-task capture menu (=my/org-quick-task-capture=) without requiring Home/Notes frames first.
+
+*Trigger:* =LWin+T= (Kanata =lmet-launcher=). Spawns a small “Emacs Quick Task” client if the daemon is down.
+
+*Alias:* None.
+
+#+begin_src powershell :tangle kanata/emacs-quick-task.ps1
+# Org quick-task capture menu. Bound in Kanata lmet-launcher to LWin + T.
+
+$ErrorActionPreference = 'SilentlyContinue'
+. (Join-Path $env:USERPROFILE '.config\scripts\_lib\config-paths.ps1')
+
+$emacsClient  = Get-EmacsExecutable -Name emacsclient
+$emacsClientW = Get-EmacsExecutable -Name emacsclientw
+if (-not $emacsClientW) {
+    Write-Error 'emacsclientw.exe not found (checked Program Files Emacs installs and PATH)'
+    exit 1
+}
+
+Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+public static class WinFocus {
+    [DllImport("user32.dll")] public static extern bool   AllowSetForegroundWindow(int dwProcessId);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern uint   GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+}
+'@
+
+$null = & $emacsClient --eval 't' 2>$null
+if (-not $?) {
+    Start-Process -FilePath $emacsClientW `
+        -ArgumentList '--alternate-editor= -c -n -F "((name . \"Emacs Quick Task\") (title . \"Emacs Quick Task\"))" --eval "(run-with-timer 0 nil (lambda () (my/mark-launcher-frame) (my/org-quick-task-capture)))"' `
+        -WorkingDirectory $env:USERPROFILE
+    exit
+}
+
+$emacsProc = Get-Process -Name emacs | Select-Object -First 1
+if ($emacsProc) { [WinFocus]::AllowSetForegroundWindow($emacsProc.Id) | Out-Null }
+& $emacsClient --eval '(progn (select-frame-set-input-focus (selected-frame)) (my/org-quick-task-capture))' 2>$null
+#+end_src
+
+
+#+end_src
+
+** cycle-send-monitor.ps1
+
+*Purpose:* Send focused window to the other monitor and follow it. Used by Kanata =LAlt+Space= for up/down toggle between monitors.
+
+*Trigger:* Kanata keybinding =LAlt+Space=.
+
+#+begin_src powershell :tangle kanata/cycle-send-monitor.ps1
+# Send focused window to the other monitor and follow it.
+# Used by Kanata LAlt+Space for up/down toggle between monitors.
+
+$ErrorActionPreference = 'SilentlyContinue'
+
+Start-Process -Wait -WindowStyle Hidden -FilePath komorebic -ArgumentList "cycle-send-to-monitor", "next"
+Start-Process -WindowStyle Hidden -FilePath komorebic -ArgumentList "cycle-monitor", "next"
+#+end_src
+
+** focus-workspace-dual.ps1 (Legacy)
+
+*Purpose:* (Legacy) Switch workspace N on both monitors simultaneously. Replaced by =komorebic-dual-wrapper.vbs= which cuts out the PowerShell middleman.
+
+*Trigger:* Replaced by =LAlt+Shift+1..7= via komorebic-dual-wrapper.vbs. Kept as reference.
+
+#+begin_src powershell :tangle kanata/focus-workspace-dual.ps1
+# Switch workspace N on both monitors simultaneously.
+# Used by Kanata LAlt+1..7 to keep mirrored workspaces in sync.
+
+param([int]$Workspace)
+
+$ErrorActionPreference = 'SilentlyContinue'
+
+# Switch the other monitor first so focus stays on the current one.
+Start-Process -Wait -WindowStyle Hidden -FilePath komorebic -ArgumentList "focus-monitor-workspace", "1", $Workspace
+Start-Process -WindowStyle Hidden -FilePath komorebic -ArgumentList "focus-monitor-workspace", "0", $Workspace
+#+end_src
+
+** toggle-komorebi-bar.ps1
+
+*Purpose:* Toggle =komorebi-bar= and restart komorebi so the WM recalculates the work area.
+
+*Trigger:* =LAlt+b= (Kanata → =kwm-b= via [[id:komorebic-wrapper][komorebic-wrapper.vbs]]).
+
+#+begin_src powershell :tangle komorebi/toggle-komorebi-bar.ps1
+# Toggle komorebi-bar and restart komorebi so the WM recalculates the work area.
+
+$ErrorActionPreference = 'Stop'
+
+$barName = 'komorebi-bar'
+$wmName  = 'komorebi'
+
+function Restart-Komorebi {
+    $wm = Get-Process -Name $wmName -ErrorAction SilentlyContinue
+    if (-not $wm) {
+        Write-Warning "Process '$wmName' not running - skipping WM restart."
+        return
+    }
+
+    Stop-Process -Id $wm.Id -Force
+    Start-Sleep -Milliseconds 600
+
+    $wmExe = (Get-Command 'komorebi.exe' -ErrorAction SilentlyContinue).Source
+    if (-not $wmExe) {
+        Write-Error 'komorebi.exe not found on PATH.'
+        exit 2
+    }
+
+    Start-Process -FilePath $wmExe -WindowStyle Hidden
+}
+
+$running = [bool](Get-Process -Name $barName -ErrorAction SilentlyContinue)
+
+if ($running) {
+    Stop-Process -Name $barName -Force
+} else {
+    $barExe = (Get-Command 'komorebi-bar.exe' -ErrorAction SilentlyContinue).Source
+    if (-not $barExe) {
+        Write-Error 'komorebi-bar.exe not found on PATH.'
+        exit 1
+    }
+    Start-Process -FilePath $barExe -WindowStyle Hidden
+}
+
+Start-Sleep -Milliseconds 250
+Restart-Komorebi
+#+end_src
+
+
+** VBScript Wrappers
+
+Thin =wscript= hosts that hide consoles. Kanata and WTQ call these instead of
+=powershell.exe= directly.
+
+** run-powershell-silent.vbs
+:PROPERTIES:
+:CUSTOM_ID: run-powershell-silent
+:END:
+
+*Purpose:* Run a =.ps1= with hidden window; forward all arguments after the script path.
+
+*Trigger:* Kanata LWin / launcher bindings (=wscript.exe //B run-powershell-silent.vbs ...=).
+
+*Usage:* =wscript.exe //B run-powershell-silent.vbs <script.ps1> [-Key Value ...]=
+
+#+begin_src vbscript :tangle komorebi/run-powershell-silent.vbs
+' run-powershell-silent.vbs - Invoke a PowerShell script with hidden window.
+' Usage: wscript.exe //B run-powershell-silent.vbs <script.ps1> [-Key Value ...]
+' All arguments after the script path are forwarded verbatim.
+' Quotes are added around any argument that contains spaces.
+
+Set oShell = CreateObject("WScript.Shell")
+
+Dim cmd
+cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File"
+
+Dim i
+Dim arg
+For i = 0 To WScript.Arguments.Count - 1
+    arg = WScript.Arguments(i)
+    If InStr(arg, " ") > 0 Then
+        cmd = cmd & " """ & arg & """"
+    Else
+        cmd = cmd & " " & arg
+    End If
+Next
+
+oShell.Run cmd, 0, False
+#+end_src
+
+** komorebic-wrapper.vbs
+:PROPERTIES:
+:CUSTOM_ID: komorebic-wrapper
+:END:
+
+*Purpose:* Run =komorebic.exe= with hidden window (focus, move, stack, etc.).
+
+*Trigger:* Kanata =lalt-komorebi= layer (=wscript.exe //B komorebic-wrapper.vbs <subcommand>=).
+
+#+begin_src vbscript :tangle komorebi/komorebic-wrapper.vbs
+' komorebic-wrapper.vbs - Silent komorebic dispatcher for Kanata bindings.
+' Usage: wscript.exe //B komorebic-wrapper.vbs <komorebic-args>
+' Forwards all arguments to komorebic.exe silently.
+
+Set oShell = CreateObject("WScript.Shell")
+
+Dim cmd
+cmd = "komorebic.exe"
+
+Dim i
+Dim arg
+For i = 0 To WScript.Arguments.Count - 1
+    arg = WScript.Arguments(i)
+    If InStr(arg, " ") > 0 Then
+        cmd = cmd & " """ & arg & """"
+    Else
+        cmd = cmd & " " & arg
+    End If
+Next
+
+oShell.Run cmd, 0, False
+#+end_src
+
+** komorebic-dual-wrapper.vbs
+:PROPERTIES:
+:CUSTOM_ID: komorebic-dual-wrapper
+:END:
+
+*Purpose:* Run =focus-monitor-workspace= on both monitors simultaneously — same
+as the old PowerShell script but without the PowerShell process overhead.
+Cuts out the ~150ms VBS→PS→komorebic×2 chain, replacing it with VBS→komorebic×2.
+
+*Trigger:* Kanata =lalt-komorebi= layer with Shift (=LAlt+Shift+1..7=).
+
+#+begin_src vbscript :tangle komorebi/komorebic-dual-wrapper.vbs
+' komorebic-dual-wrapper.vbs - Focus workspace N on both monitors.
+' Usage: wscript.exe //B komorebic-dual-wrapper.vbs <workspace-index>
+' Calls focus-monitor-workspace on monitor 1 first (with wait) then monitor 0.
+
+Set oShell = CreateObject("WScript.Shell")
+
+Dim wsIndex
+wsIndex = WScript.Arguments(0)
+
+' Switch the other monitor first so focus stays on the current one.
+oShell.Run "komorebic.exe focus-monitor-workspace 1 " & wsIndex, 0, True
+oShell.Run "komorebic.exe focus-monitor-workspace 0 " & wsIndex, 0, False
+#+end_src
+
+** enforce-windows-settings.ps1
+
+*Purpose:* Re-apply XMouse (hover-to-focus) active window tracking and disable Aero Snap. Safely idempotent, can be run mid-session if Explorer is restarted.
+
+*Trigger:* Run at logon or on demand to fix focus-follow-mouse behavior.
+
+#+begin_src powershell :tangle komorebi/enforce-windows-settings.ps1
+# enforce-windows-settings.ps1 — re-apply XMouse + disable Aero Snap.
+# Idempotent; safe to run on every logon or mid-session after explorer restart.
+
+$ErrorActionPreference = 'Stop'
+
+# ── Registry persistence ──────────────────────────────────────────────────────
+
+# Disable Aero Snap (window auto-arrange on edge)
+Set-ItemProperty -Path 'HKCU:\Control Panel\Desktop' -Name 'WindowArrangementActive' -Value '0' -Type String
+
+# ── Apply immediately via WIN32 API ───────────────────────────────────────────
+
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public class Win32Settings {
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool SystemParametersInfo(
+        uint uiAction, uint uiParam, IntPtr pvParam, uint fWinIni);
+
+    public const uint SPI_SETACTIVEWINDOWTRACKING = 0x1001;
+    public const uint SPI_SETACTIVEWNDTRKTIMEOUT  = 0x2002;
+    public const uint SPI_SETWINARRANGING         = 0x0083;
+    public const uint SPIF_UPDATEINIFILE          = 0x01;
+    public const uint SPIF_SENDCHANGE             = 0x02;
+}
+'@
+
+$flags = [Win32Settings]::SPIF_UPDATEINIFILE -bor [Win32Settings]::SPIF_SENDCHANGE
+
+# 1. Enable active window tracking (hover to activate)
+[void][Win32Settings]::SystemParametersInfo(
+    [Win32Settings]::SPI_SETACTIVEWINDOWTRACKING, 1,
+    [IntPtr]::Zero, $flags)
+
+# 2. Set hover delay to 500 ms (default)
+[void][Win32Settings]::SystemParametersInfo(
+    [Win32Settings]::SPI_SETACTIVEWNDTRKTIMEOUT, 500,
+    [IntPtr]::Zero, $flags)
+
+# 3. Disable window auto-arrange / Aero Snap
+[void][Win32Settings]::SystemParametersInfo(
+    [Win32Settings]::SPI_SETWINARRANGING, 0,
+    [IntPtr]::Zero, $flags)
+#+end_src
+
+* Basic Memory
+
+** start-basic-memory-server.ps1
+
+*Purpose:* Ensure Basic Memory MCP listens on =127.0.0.1:8765= (streamable HTTP).
+
+*Trigger:* =startup-orchestrator.vbs= (Group 1) at logon; manual via =bm-up=.
+
+*Idempotent:* Exits 0 if the port is already bound. Uses venv Python — not =uvx= (fails in login sessions).
+
+#+begin_src powershell :tangle basic-memory/start-basic-memory-server.ps1
+# Start Basic Memory MCP server in HTTP mode if not already running.
+# Idempotent: exits immediately if port 8765 is already bound.
+# Called by startup-orchestrator.vbs at user logon.
+#
+# NOTE: Do NOT use basic-memory.exe or uvx here — both are uv trampolines that
+# fail with "uv trampoline failed to canonicalize script path" in non-interactive
+# sessions (login scripts, Task Scheduler).  Use the venv Python directly instead.
+
+$port   = 8765
+$python = "$env:APPDATA\uv\tools\basic-memory\Scripts\python.exe"
+$code   = 'from basic_memory.cli.main import app; app(standalone_mode=False)'
+
+$running = Get-NetTCPConnection -LocalPort $port -State Listen -EA 0
+if ($running) { exit 0 }
+
+if (-not (Test-Path $python)) {
+    Write-Warning "basic-memory venv Python not found at $python. Run: uv tool install basic-memory"
+    exit 1
+}
+
+Start-Process -FilePath $python `
+    -ArgumentList '-c', "`"$code`"", 'mcp', '--transport', 'streamable-http', '--host', '127.0.0.1', '--port', '8765' `
+    -WindowStyle Hidden
+#+end_src
+
+** lint-brain.ps1
+
+*Purpose:* Scan the Basic Memory graph for missing frontmatter and broken WikiLinks.
+
+#+begin_src powershell :tangle basic-memory/lint-brain.ps1
+param(
+    [switch]$Fix
+)
+
+$rootDir = Join-Path $env:USERPROFILE 'basic-memory'
+
+Write-Host "🧠 Running Basic Memory Brain Health Linter..." -ForegroundColor Cyan
+
+$mdFiles = Get-ChildItem -Path $rootDir -Filter *.md -Recurse | Where-Object { $_.FullName -notmatch "\\.git\\" }
+
+$errors = 0
+$warnings = 0
+
+foreach ($file in $mdFiles) {
+    $content = Get-Content $file.FullName -Raw
+
+    if ($file.DirectoryName -ne $rootDir -and $content -notmatch '(?s)^---.+?---') {
+        Write-Host "[WARNING] Missing frontmatter: $($file.Name)" -ForegroundColor Yellow
+        $warnings++
+    }
+
+    $links = [regex]::Matches($content, '\[\[(.*?)\]\]')
+    foreach ($match in $links) {
+        $linkTarget = $match.Groups[1].Value.Split('|')[0].Split('#')[0]
+        $targetName = $linkTarget.Split('/')[-1]
+
+        $escapedLink = [regex]::Escape($linkTarget)
+        $targetExists = $mdFiles | Where-Object { 
+            ($_.BaseName -eq $targetName) -or ($_.Name -eq $targetName) -or ($_.FullName -match "$escapedLink")
+        }
+
+        if (-not $targetExists) {
+            Write-Host "[ERROR] Broken WikiLink in $($file.Name): [[$linkTarget]]" -ForegroundColor Red
+            $errors++
+        }
+    }
+}
+
+if ($errors -eq 0 -and $warnings -eq 0) {
+    Write-Host "✅ Brain is healthy! No broken links or missing frontmatter." -ForegroundColor Green
+} else {
+    Write-Host "⚠️ Found $errors broken links and $warnings warnings." -ForegroundColor Yellow
+}
+#+end_src
+
+** cron-daily.ps1
+
+*Purpose:* Automated daily scan that writes a digest to logs/daily-digest.md and flags stale notes.
+
+#+begin_src powershell :tangle basic-memory/cron-daily.ps1
+$rootDir = Join-Path $env:USERPROFILE 'basic-memory'
+$digestPath = Join-Path $rootDir "logs\daily-digest.md"
+
+$dateStr = Get-Date -Format "yyyy-MM-dd"
+$7DaysAgo = (Get-Date).AddDays(-7)
+$24HoursAgo = (Get-Date).AddHours(-24)
+
+$mdFiles = Get-ChildItem -Path $rootDir -Filter *.md -Recurse | Where-Object { $_.FullName -notmatch "\\.git\\" }
+
+$staleNotes = $mdFiles | Where-Object { $_.DirectoryName -match "notes" -and $_.LastWriteTime -lt $7DaysAgo }
+$recentNotes = $mdFiles | Where-Object { $_.LastWriteTime -gt $24HoursAgo -and $_.Name -ne "daily-digest.md" }
+
+$content = @"
+---
+title: Daily Digest - $dateStr
+type: log
+tags: [digest, cron]
+author: system
+date: $dateStr
+---
+
+# Daily Digest ($dateStr)
+
+> Automated daily scan of Basic Memory health and activity.
+
+## What Changed in the Last 24 Hours
+"@
+
+if ($recentNotes.Count -gt 0) {
+    foreach ($note in $recentNotes) {
+        $relPath = $note.FullName.Substring($rootDir.Length + 1)
+        $content += "`n- [[$relPath]] (Modified: $($note.LastWriteTime.ToString('HH:mm')))"
+    }
+} else {
+    $content += "`n- No files modified in the last 24 hours."
+}
+
+$content += @"
+
+
+## Stale Notes (Older than 7 days)
+> Notes in the `"notes/`" directory should be ephemeral. Either curate these into permanent `"reference/`" notes, or delete them.
+"@
+
+if ($staleNotes.Count -gt 0) {
+    foreach ($note in $staleNotes) {
+        $relPath = $note.FullName.Substring($rootDir.Length + 1)
+        $content += "`n- [[$relPath]] (Last updated: $($note.LastWriteTime.ToString('yyyy-MM-dd')))"
+    }
+} else {
+    $content += "`n- No stale notes found! Good job."
+}
+
+Set-Content -Path $digestPath -Value $content -Encoding UTF8
+Write-Host "Daily digest written to $digestPath" -ForegroundColor Green
+
+# --- Chain Execution of Maintenance Scripts ---
+$scriptDir = Split-Path $MyInvocation.MyCommand.Path
+$injectScript = Join-Path $scriptDir 'inject-backlinks.ps1'
+$graphScript = Join-Path $scriptDir 'generate-knowledge-graph.ps1'
+$commitScript = Join-Path $scriptDir 'auto-commit-memory.ps1'
+
+if (Test-Path $injectScript) { & $injectScript }
+if (Test-Path $graphScript) { & $graphScript }
+if (Test-Path $commitScript) { & $commitScript }
+#+end_src
+
+** inject-backlinks.ps1
+
+*Purpose:* Parses the memory graph for WikiLinks and appends/updates a `## Backlinks` section to the bottom of all referenced notes.
+
+#+begin_src powershell :tangle basic-memory/inject-backlinks.ps1
+$rootDir = Join-Path $env:USERPROFILE 'basic-memory'
+$mdFiles = Get-ChildItem -Path $rootDir -Filter *.md -Recurse | Where-Object { $_.FullName -notmatch "\\.git\\" }
+
+$linksDict = @{}
+
+# Parse all files to build the backlinks dictionary
+foreach ($file in $mdFiles) {
+    $content = Get-Content $file.FullName -Raw
+    $links = [regex]::Matches($content, '\[\[(.*?)\]\]')
+    
+    foreach ($match in $links) {
+        $target = $match.Groups[1].Value.Split('|')[0].Split('#')[0]
+        $targetBasename = $target.Split('/')[-1]
+        
+        if (-not $linksDict.ContainsKey($targetBasename)) {
+            $linksDict[$targetBasename] = @()
+        }
+        
+        $sourceRelPath = $file.FullName.Substring($rootDir.Length + 1).Replace('\', '/')
+        if ($sourceRelPath -notmatch "logs/daily-digest.md" -and $sourceRelPath -notin $linksDict[$targetBasename]) {
+            $linksDict[$targetBasename] += $sourceRelPath
+        }
+    }
+}
+
+# Inject backlinks into target files
+foreach ($file in $mdFiles) {
+    $basename = $file.Name
+    if ($linksDict.ContainsKey($basename) -and $linksDict[$basename].Count -gt 0) {
+        $content = Get-Content $file.FullName -Raw
+        $lines = $content -split "`n"
+        
+        # Strip existing backlinks section if it exists
+        $newLines = @()
+        $inBacklinks = $false
+        foreach ($line in $lines) {
+            if ($line -match "^## Backlinks$") { $inBacklinks = $true }
+            if (-not $inBacklinks) { $newLines += $line }
+        }
+        
+        $cleanContent = ($newLines -join "`n").TrimEnd()
+        
+        # Append new backlinks
+        $cleanContent += "`n`n## Backlinks`n"
+        foreach ($source in $linksDict[$basename]) {
+            $cleanContent += "- [[$source]]`n"
+        }
+        
+        Set-Content -Path $file.FullName -Value $cleanContent -Encoding UTF8
+    }
+}
+Write-Host "SUCCESS: Backlinks injected successfully." -ForegroundColor Green
+#+end_src
+
+** generate-knowledge-graph.ps1
+
+*Purpose:* Maps out the memory clusters into a Mermaid.js diagram.
+
+#+begin_src powershell :tangle basic-memory/generate-knowledge-graph.ps1
+$rootDir = Join-Path $env:USERPROFILE 'basic-memory'
+$graphPath = Join-Path $rootDir "logs\knowledge-graph.md"
+$mdFiles = Get-ChildItem -Path $rootDir -Filter *.md -Recurse | Where-Object { $_.FullName -notmatch "\\.git\\" -and $_.Name -ne "knowledge-graph.md" }
+
+$dateStr = Get-Date -Format "yyyy-MM-dd"
+$content = @"
+---
+title: Knowledge Graph
+type: log
+tags: [graph, map]
+date: $dateStr
+---
+
+# Knowledge Graph
+
+> Auto-generated Mermaid diagram of the Basic Memory structure.
+
+"@
+
+$content += "`n" + '```mermaid' + "`n%%{init: {'flowchart': {'nodeSpacing': 80, 'rankSpacing': 150}}}%%`nflowchart LR;"
+
+foreach ($file in $mdFiles) {
+    if ($file.Name -match "daily-digest|ai-log") { continue }
+    
+    $sourceName = $file.BaseName
+    $sourceNode = $sourceName -replace '[^a-zA-Z0-9]', ''
+    $rawContent = Get-Content $file.FullName -Raw
+    $links = [regex]::Matches($rawContent, '\[\[(.*?)\]\]')
+    
+    foreach ($match in $links) {
+        $inner = $match.Groups[1].Value
+        # Handle org-mode [[target][display]] links
+        if ($inner -match '^(.*?)\]\[') {
+            $target = $Matches[1]
+        } else {
+            $target = $inner.Split('|')[0].Split('#')[0]
+        }
+        
+        $targetName = $target.Split('/')[-1] -replace '\.md$', ''
+        $targetNode = $targetName -replace '[^a-zA-Z0-9]', ''
+        if ($targetNode -ne "") {
+            $content += "`n    $sourceNode[`"$sourceName`"] --> $targetNode[`"$targetName`"];"
+        }
+    }
+}
+
+$content += "`n" + '```'
+Set-Content -Path $graphPath -Value $content -Encoding UTF8
+Write-Host "SUCCESS: Knowledge graph generated at $graphPath" -ForegroundColor Green
+#+end_src
+
+** auto-commit-memory.ps1
+
+*Purpose:* Auto-snapshots the Basic Memory repo and pushes to the remote.
+
+#+begin_src powershell :tangle basic-memory/auto-commit-memory.ps1
+$rootDir = Join-Path $env:USERPROFILE 'basic-memory'
+
+Set-Location $rootDir
+$status = git status --porcelain
+
+if ($status) {
+    git add .
+    git commit -m "Auto-snapshot: Daily maintenance and brain updates"
+    git push origin main
+    Write-Host "SUCCESS: Auto-commit pushed to remote." -ForegroundColor Green
+} else {
+    Write-Host "SUCCESS: No changes to commit." -ForegroundColor Green
+}
+#+end_src
+* Himalaya (email credential helper)
+
+** get-pass.ps1
+
+*Purpose:* Retrieve Gmail app password from Windows Credential Manager
+(=PasswordVault=). Used by himalaya's IMAP/SMTP =backend.auth.cmd=.
+
+*Trigger:* Called automatically by himalaya on connect.
+
+#+begin_src powershell :tangle himalaya/get-pass.ps1 :mkdirp yes
+# Read Gmail app password from Windows Credential Manager
+$cred = cmdkey /list:gmail 2>$null | Select-String "gmail"
+if (-not $cred) {
+    Write-Error "No credential found. Run set-pass.ps1 to store the Gmail app password first."
+    exit 1
+}
+Add-Type -AssemblyName System.Runtime.WindowsRuntime
+$vault = [Windows.Security.Credentials.PasswordVault, Windows.Security.Credentials, ContentType=WindowsRuntime]
+$credential = (New-Object Windows.Security.Credentials.PasswordVault).Retrieve("gmail", "***@***.***")
+$credential.RetrievePassword()
+Write-Output $credential.Password
+#+end_src
+
+** set-pass.ps1
+
+*Purpose:* Store Gmail app password in Windows PasswordVault. One-shot setup
+utility — run once after creating the app password in Google Account settings.
+
+*Trigger:* Manual; =set-pass.ps1 "your-app-password"=.
+
+#+begin_src powershell :tangle himalaya/set-pass.ps1 :mkdirp yes
+# Store Gmail app password in Windows PasswordVault (used by himalaya's get-pass.ps1)
+param(
+    [Parameter(Mandatory=$true)]
+    [string]$Password
+)
+
+Add-Type -AssemblyName System.Runtime.WindowsRuntime
+$null = [Windows.Security.Credentials.PasswordVault, Windows.Security.Credentials, ContentType=WindowsRuntime]
+
+$vault = New-Object Windows.Security.Credentials.PasswordVault
+$cred = New-Object Windows.Security.Credentials.PasswordCredential("gmail", "***@***.***", $Password)
+$vault.Add($cred)
+Write-Output "Gmail credential stored in PasswordVault successfully."
+#+end_src
+
+* Phoneme Scripts
+
+** phoneme-journal.ps1
+
+*Purpose:* Append Phoneme Speech-to-Text transcribed voice notes to today's `**** Log` section in `journal.org`. Primarily routes through =emacsclient --eval= to call =my/phoneme-insert-transcript= (safe when Emacs daemon has =journal.org= open), with a direct file I/O fallback when the daemon is unavailable.
+
+*Trigger:* Hook command pasted in Phoneme Settings → Destination & Integrations:
+=powershell -ExecutionPolicy Bypass -NoProfile -File "%USERPROFILE%\.config\scripts\phoneme\phoneme-journal.ps1"=
+
+#+begin_src powershell :tangle phoneme/phoneme-journal.ps1
+# Appends a Phoneme voice note to today's **** Log section in journal.org.
+# Uses emacsclient --eval as the primary path (safe with daemon open buffers).
+# Falls back to direct file I/O when Emacs daemon is unavailable.
+#
+# Hook command (paste into Phoneme Settings -> Destination & Integrations):
+#   powershell -ExecutionPolicy Bypass -NoProfile -File "%USERPROFILE%\.config\scripts\phoneme\phoneme-journal.ps1"
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+. (Join-Path $PSScriptRoot '..\_lib\config-paths.ps1')
+
+# ── read Phoneme JSON from stdin ───────────────────────────────────────────
+$json = [Console]::In.ReadToEnd()
+if (-not $json.Trim()) { exit 0 }
+$data       = $json | ConvertFrom-Json
+$transcript = ($data.transcript -replace '[\r\n]+', ' ').Trim()
+if (-not $transcript) { exit 0 }
+
+# ── try Emacs daemon path first (preferred) ────────────────────────────────
+$emacsClient = Get-EmacsExecutable -Name emacsclient
+if ($emacsClient) {
+    # Escape transcript for Elisp string (backslash + double-quote)
+    $escaped = $transcript -replace '\\', '\\\' -replace '"', '\"'
+    $code = "(my/phoneme-insert-transcript ""$escaped"")"
+    $result = & $emacsClient -a "" --eval $code 2>&1
+    if ($LASTEXITCODE -eq 0) { exit 0 }
+    # Fall through to direct I/O if daemon didn't respond
+}
+
+# ── direct file I/O fallback (daemon unavailable) ──────────────────────────
+. (Join-Path $PSScriptRoot '..\_lib\config-paths.ps1')
+$journalFile = Join-Path $script:OrgRoot 'journal.org'
+$now  = Get-Date
+$ci   = [System.Globalization.CultureInfo]::InvariantCulture
+$date    = $now.ToString('yyyy-MM-dd', $ci)
+$day     = $now.ToString('dddd', $ci)
+$dayAbbr = $now.ToString('ddd', $ci)
+$ts      = "[$date $dayAbbr $($now.ToString('HH:mm', $ci))]"
+$entry   = "- $ts $transcript"
+$heading = "*** $date $day"
+
+if (-not (Test-Path $journalFile)) {
+    New-Item -ItemType File -Path $journalFile -Force | Out-Null
+}
+$raw = [System.IO.File]::ReadAllText($journalFile, [System.Text.Encoding]::UTF8)
+$lines = [System.Collections.Generic.List[string]]::new()
+$lines.AddRange([string[]]($raw -replace "`r`n", "`n" -replace "`r", "`n" -split "`n"))
+
+$hi = -1
+for ($i = 0; $i -lt $lines.Count; $i++) {
+    if ($lines[$i] -eq $heading) { $hi = $i; break }
+}
+
+if ($hi -lt 0) {
+    while ($lines.Count -gt 0 -and $lines[$lines.Count - 1] -eq '') {
+        $lines.RemoveAt($lines.Count - 1)
+    }
+    foreach ($l in ('', $heading, '', '**** Log', $entry)) { $lines.Add($l) }
+} else {
+    $sectionEnd = $lines.Count
+    $li = -1
+    for ($i = $hi + 1; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -match '^\*{3} ')      { $sectionEnd = $i; break }
+        if ($lines[$i] -match '^\*{4} Log\b') { $li = $i }
+    }
+    if ($li -lt 0) {
+        $at = $sectionEnd
+        while ($at -gt $hi + 1 -and $lines[$at - 1] -eq '') { $at-- }
+        $lines.Insert($at, $entry)
+        $lines.Insert($at, '**** Log')
+        $lines.Insert($at, '')
+    } else {
+        $at = $li + 1
+        for ($i = $li + 1; $i -lt $sectionEnd; $i++) {
+            if   ($lines[$i] -match '^- \[')  { $at = $i + 1 }
+            elseif ($lines[$i] -match '^\*+') { break }
+        }
+        $lines.Insert($at, $entry)
+    }
+}
+
+$out = ($lines -join "`n").TrimEnd() + "`n"
+[System.IO.File]::WriteAllText($journalFile, $out, [System.Text.UTF8Encoding]::new($false))
+#+end_src
+
+** phoneme-denote.ps1
+
+*Purpose:* Creates a Denote note (keyword: =:voice:=) from a Phoneme voice transcript. No journal entry — purely a Denote reference capture, intended for quick ideas, dictation, or voice memos that don't belong in the daily journal.
+
+*Trigger:* Hook command pasted in Phoneme Settings → Destination & Integrations:
+=powershell -ExecutionPolicy Bypass -NoProfile -File "%USERPROFILE%\.config\scripts\phoneme\phoneme-denote.ps1"=
+
+#+begin_src powershell :tangle phoneme/phoneme-denote.ps1
+# Creates a Denote note from a Phoneme voice transcript.
+# No journal entry — pure Denote capture via emacsclient --eval.
+#
+# Hook command (paste into Phoneme Settings -> Destination & Integrations):
+#   powershell -ExecutionPolicy Bypass -NoProfile -File "%USERPROFILE%\.config\scripts\phoneme\phoneme-denote.ps1"
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+. (Join-Path $PSScriptRoot '..\_lib\config-paths.ps1')
+
+# ── read Phoneme JSON from stdin ───────────────────────────────────────────
+$json = [Console]::In.ReadToEnd()
+if (-not $json.Trim()) { exit 0 }
+$data       = $json | ConvertFrom-Json
+$transcript = ($data.transcript -replace '[\r\n]+', ' ').Trim()
+if (-not $transcript) { exit 0 }
+
+# ── call Emacs daemon to create the Denote note ───────────────────────────
+$emacsClient = Get-EmacsExecutable -Name emacsclient
+if (-not $emacsClient) { exit 1 }
+
+$escaped = $transcript -replace '\\', '\\\' -replace '"', '\"'
+$code = "(my/phoneme-insert-denote ""$escaped"")"
+& $emacsClient -a "" --eval $code
+exit $LASTEXITCODE
+#+end_src
+
+** start-phoneme-dev.ps1
+
+*Purpose:* Start the full Phoneme development stack in three separate terminal
+windows: =phoneme-daemon --foreground= (logs), Vite HMR on =:5173=, then
+=cargo tauri dev= after Vite is up. Prefers **WezTerm** (=wezterm start=) when
+=wezterm.exe= is on PATH or in the usual install location; otherwise falls back
+to =Start-Process pwsh= (default terminal emulator).
+
+*Trigger:* =dev-phoneme= in PowerShell (profile alias → [[file:../powershell/powershell.org][powershell.org]]).
+
+*Environment:* Set =$env:PHONEME_ROOT= to override the default repo path
+(=~/Projects/dev/phoneme=).
+
+*Optional:* =-KillStaleDaemon= stops any running =phoneme-daemon= first (frees the
+named pipe when a stale instance holds it).
+
+#+begin_src powershell :tangle phoneme/start-phoneme-dev.ps1
+# Start Phoneme dev stack: daemon (foreground) + Vite HMR + cargo tauri dev.
+# Prefers WezTerm (wezterm start); falls back to Start-Process pwsh.
+# Usage:
+#   dev-phoneme
+#   dev-phoneme -KillStaleDaemon
+#   $env:PHONEME_ROOT = 'D:\src\phoneme'; dev-phoneme
+
+param(
+    [string]$Root = $(if ($env:PHONEME_ROOT) { $env:PHONEME_ROOT } else { Join-Path $HOME 'Projects\dev\phoneme' }),
+    [switch]$KillStaleDaemon
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+function Resolve-WezTermExe {
+    $cmd = Get-Command wezterm -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    foreach ($p in @(
+        "$env:LOCALAPPDATA\Programs\WezTerm\wezterm.exe",
+        "$env:ProgramFiles\WezTerm\wezterm.exe"
+    )) {
+        if (Test-Path -LiteralPath $p) { return $p }
+    }
+    return $null
+}
+
+function Start-PhonemeDevTerminal {
+    param(
+        [Parameter(Mandatory)][string]$Title,
+        [Parameter(Mandatory)][string]$WorkingDirectory,
+        [Parameter(Mandatory)][string]$Command
+    )
+    $wez = Resolve-WezTermExe
+    if ($wez) {
+        Start-Process -FilePath $wez -ArgumentList @(
+            'start',
+            '--cwd', $WorkingDirectory,
+            '--title', $Title,
+            '--', 'pwsh', '-NoExit', '-Command', $Command
+        )
+    } else {
+        $wrapper = "Set-Location '$WorkingDirectory'; $Command"
+        Start-Process pwsh -ArgumentList @('-NoExit', '-Command', $wrapper)
+    }
+}
+
+if (-not (Test-Path -LiteralPath $Root)) {
+    throw "Phoneme repo not found: $Root (set `$env:PHONEME_ROOT or pass -Root)"
+}
+
+$frontend = Join-Path $Root 'frontend'
+if (-not (Test-Path -LiteralPath $frontend)) {
+    throw "Missing frontend/: $frontend"
+}
+
+if ($KillStaleDaemon) {
+    Stop-Process -Name phoneme-daemon -Force -ErrorAction SilentlyContinue
+}
+
+$termLabel = if (Resolve-WezTermExe) { 'WezTerm' } else { 'pwsh (default terminal)' }
+Write-Host "Phoneme dev stack → $Root" -ForegroundColor Cyan
+Write-Host "Terminal launcher: $termLabel" -ForegroundColor DarkCyan
+
+$daemonCmd = @"
+Write-Host '=== phoneme-daemon ===' -ForegroundColor Cyan
+`$env:RUST_LOG = 'info'
+cargo run -p phoneme-daemon -- --foreground
+"@
+
+$viteCmd = @"
+Write-Host '=== Vite HMR ===' -ForegroundColor Green
+pnpm dev
+"@
+
+$tauriCmd = @"
+Write-Host '=== cargo tauri dev ===' -ForegroundColor Yellow
+cargo tauri dev
+"@
+
+Start-PhonemeDevTerminal -Title 'phoneme-daemon' -WorkingDirectory $Root -Command $daemonCmd
+Start-PhonemeDevTerminal -Title 'phoneme-vite' -WorkingDirectory $frontend -Command $viteCmd
+
+Write-Host 'Waiting for http://localhost:5173 ...'
+do {
+    Start-Sleep -Milliseconds 400
+    $up = $false
+    try {
+        $up = (Invoke-WebRequest -Uri 'http://localhost:5173' -UseBasicParsing -TimeoutSec 2).StatusCode -eq 200
+    } catch {}
+} until ($up)
+
+Start-PhonemeDevTerminal -Title 'phoneme-tauri' -WorkingDirectory $Root -Command $tauriCmd
+
+Write-Host 'All three processes started in separate windows.' -ForegroundColor Green
+#+end_src
+
+* Utility Scripts
+
+** tangle-configs.ps1
+
+*Purpose:* Batch-tangle every literate =.org= under =~/.config= (except =emacs/= internals and =archive/=).
+Falls back to =tangle-fallback.ps1= (regex-based block extraction) for =qutebrowser.org=
+when Emacs batch =org-babel-tangle= reports 0 blocks (org 9.7 / Emacs 30.2 batch-mode parser bug).
+Fallback is transparent: shows =OK (fallback)= in the output.
+
+*Trigger:* Manual — prefer =tangle all= or =tangle-validate= in PowerShell.
+
+*Parameters:* =-DryRun= (list only), =-Validate= (tangle then syntax-check =.kbd= / =.ps1= / JSON / TOML).
+
+Companion: [[id:verify-org-tangle-sync][verify-org-tangle-sync.ps1]] for drift on a fixed high-churn set.
+
+Uses =coding-system-for-write 'utf-8-unix= so Emacs batch never prompts for coding system.
+
+#+begin_src powershell :tangle utility/tangle-configs.ps1
+# Tangle all literate configuration files automatically.
+# Uses vanilla Emacs batch mode — org-babel-tangle needs no Doom hooks.
+# Usage:
+#   .\tangle-configs.ps1              # Tangle all configs
+#   .\tangle-configs.ps1 -DryRun      # Preview what would be tangled
+#   .\tangle-configs.ps1 -Validate   # Tangle and validate generated files
+
+param(
+    [Parameter(Mandatory = $false)]
+    [string]$ConfigDir = "$env:USERPROFILE\.config",
+
+    [Parameter(Mandatory = $false)]
+    [switch]$DryRun = $false,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$Validate = $false
+)
+
+$ErrorActionPreference = 'Stop'
+
+. (Join-Path $PSScriptRoot '..\_lib\config-paths.ps1')
+
+$emacsExe = Get-EmacsExecutable -Name emacs
+if (-not $emacsExe) {
+    Write-Error 'Emacs not found. Install Emacs or ensure it is on PATH.'
+    exit 1
+}
+Write-Host "Using Emacs: $emacsExe" -ForegroundColor Green
+
+# ── Find tangleable org files ──────────────────────────────────────────────────
+# Exclude ~/.config/emacs entirely — Doom's internal directory contains hundreds
+# of package README.org files that must never be tangled.
+# Also exclude git internals and archived scripts.
+$escapedConfig  = [regex]::Escape($ConfigDir)
+$excludePattern = "$escapedConfig\\emacs\\|\\\.git\\|\\archive\\"
+$tanglePattern  = '(?m)^\s*#\+PROPERTY:.*:tangle\s+(?!no\b)\S|^\s*:header-args(?::[A-Za-z0-9_-]+)?:.*:tangle\s+(?!no\b)\S|^\s*#\+begin_src\s[^\n]+:tangle\s+(?!no\b)\S'
+
+$orgFiles = Get-ChildItem -Path $ConfigDir -Filter '*.org' -Recurse -Force -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -notmatch $excludePattern } |
+    Where-Object {
+        $c = Get-Content $_.FullName -Raw -ErrorAction SilentlyContinue
+        # Match files with:
+        #   - a global #+PROPERTY tangle header
+        #   - a subtree :header-args...: drawer entry (e.g. kanata.org)
+        #   - a src block with an explicit :tangle target
+        # All variants ignore `:tangle no`.
+        $c -match $tanglePattern
+    }
+
+if (-not $orgFiles) {
+    Write-Warning "No .org files with :tangle found in $ConfigDir"
+    exit 0
+}
+
+$label = if ($orgFiles.Count -eq 1) { '1 file' } else { "$($orgFiles.Count) files" }
+Write-Host "Found $label to tangle:" -ForegroundColor Cyan
+$orgFiles | ForEach-Object { Write-Host "  - $($_.FullName.Replace($ConfigDir, '~/.config'))" }
+Write-Host ''
+
+if ($DryRun) {
+    Write-Host 'Dry run — no files were changed.' -ForegroundColor Yellow
+    exit 0
+}
+
+# ── Tangle ─────────────────────────────────────────────────────────────────────
+$successCount = 0
+$failCount    = 0
+
+foreach ($file in $orgFiles) {
+    $rel = $file.FullName.Replace($ConfigDir, '~/.config')
+    Write-Host "Tangling $rel..." -NoNewline
+
+    $outputStr = Invoke-EmacsOrgTangle -EmacsExe $emacsExe -OrgPath $file.FullName
+    $hasSuccess = $outputStr -match "Tangled \d+ code block"
+    
+    if ($hasSuccess) {
+        if ($file.Name -eq 'kanata.org') {
+            Repair-KanataTangledFiles -KanataDir (Split-Path $file.FullName -Parent)
+        }
+        Write-Host ' OK' -ForegroundColor Green
+        $successCount++
+    } elseif ($file.Name -eq 'qutebrowser.org' -and $outputStr -match "Tangled 0 code blocks") {
+        # Emacs batch tangle fails for qutebrowser.org (org 9.7 parser bug).
+        # Use PowerShell fallback extractor instead.
+        Write-Host ' fallback...' -NoNewline -ForegroundColor Yellow
+        $fallbackScript = Join-Path $PSScriptRoot 'tangle-fallback.ps1'
+        $fallbackOut = & $fallbackScript -OrgFile $file.FullName -ConfigRoot $ConfigDir 2>&1
+        if ($LASTEXITCODE -eq 0 -or -not $LASTEXITCODE) {
+            Write-Host ' OK (fallback)' -ForegroundColor Cyan
+            $successCount++
+        } else {
+            Write-Host " FAILED" -ForegroundColor Red
+            $fallbackOut | Where-Object { $_ } | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkRed }
+            $failCount++
+        }
+    } else {
+        Write-Host " FAILED" -ForegroundColor Red
+        $outputStr | Where-Object { $_ } | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkRed }
+        $failCount++
+    }
+}
+
+# ── Validate (optional) ────────────────────────────────────────────────────────
+function Test-ConfigFile {
+    param([string]$FilePath)
+
+    $ext = [System.IO.Path]::GetExtension($FilePath).ToLower()
+    $fileName = [System.IO.Path]::GetFileName($FilePath)
+
+    switch ($ext) {
+        '.kbd' {
+            # Kanata syntax check
+            $kanata = Get-Command kanata -ErrorAction SilentlyContinue
+            if ($kanata) {
+                $output = & kanata --debug -c $FilePath 2>&1
+                if ($LASTEXITCODE -eq 0) { return $true }
+                else {
+                    Write-Host "    Kanata validation failed:" -ForegroundColor Red
+                    $output | ForEach-Object { Write-Host "      $_" -ForegroundColor DarkRed }
+                    return $false
+                }
+            } else {
+                Write-Host "    ⚠ kanata not found, skipping validation" -ForegroundColor DarkYellow
+                return $true
+            }
+        }
+        '.ps1' {
+            # PowerShell syntax check - use parser for better results
+            $parseErrors = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile($FilePath, [ref]$null, [ref]$parseErrors)
+            if ($parseErrors.Count -eq 0) {
+                # Also try PSScriptAnalyzer if available
+                $pssa = Get-Module PSScriptAnalyzer -ListAvailable -ErrorAction SilentlyContinue
+                if ($pssa) {
+                    $issues = Invoke-ScriptAnalyzer -Path $FilePath -Severity Error -ErrorAction SilentlyContinue
+                    if ($issues) {
+                        Write-Host "    PSScriptAnalyzer found $($issues.Count) error(s)" -ForegroundColor Yellow
+                        $issues | Select-Object -First 3 | ForEach-Object {
+                            Write-Host "      Line $($_.Line): $($_.Message)" -ForegroundColor DarkYellow
+                        }
+                    }
+                }
+                return $true
+            } else {
+                Write-Host "    PowerShell parse errors:" -ForegroundColor Red
+                $parseErrors | Select-Object -First 3 | ForEach-Object {
+                    Write-Host "      Line $($_.Extent.StartLineNumber): $($_.Message)" -ForegroundColor DarkRed
+                }
+                return $false
+            }
+        }
+        '.json' {
+            # JSON syntax check with comment handling for jsonc files
+            $content = Get-Content $FilePath -Raw
+            
+            # Check if it's a JSONC file (JSON with comments)
+            if ($fileName -match '\.jsonc$' -or $content -match '^\s*//') {
+                # Strip comments for validation
+                $jsonContent = $content -replace '//.*$', '' -replace '/\*.*?\*/', ''
+                try {
+                    $jsonContent | ConvertFrom-Json | Out-Null
+                    return $true
+                } catch {
+                    Write-Host "    JSONC parse error: $_" -ForegroundColor Red
+                    return $false
+                }
+            } else {
+                try {
+                    $content | ConvertFrom-Json | Out-Null
+                    return $true
+                } catch {
+                    Write-Host "    JSON parse error: $_" -ForegroundColor Red
+                    return $false
+                }
+            }
+        }
+        '.toml' {
+            # TOML validation - check for balanced brackets and basic structure
+            $content = Get-Content $FilePath -Raw
+            $lines = $content -split "`n"
+            
+            # Check for basic TOML patterns
+            $hasTable = $content -match '^\s*\[.+\]'
+            $hasKeyValue = $content -match '^\s*\w+\s*='
+            
+            if (-not $hasTable -and -not $hasKeyValue) {
+                Write-Host "    ⚠ No TOML tables or key-value pairs found" -ForegroundColor DarkYellow
+                return $true  # Warn but don't fail
+            }
+            
+            # Check for bracket balance in table headers
+            $tableHeaders = $lines | Where-Object { $_ -match '^\s*\[' }
+            foreach ($header in $tableHeaders) {
+                $open = ($header -match '\[').Count
+                $close = ($header -match '\]').Count
+                if ($open -ne $close) {
+                    Write-Host "    Unbalanced brackets in: $header" -ForegroundColor Red
+                    return $false
+                }
+            }
+            
+            return $true
+        }
+        default { return $true }  # Unknown extension, skip validation
+    }
+}
+
+if ($Validate -and $successCount -gt 0) {
+    Write-Host ''
+    Write-Host 'Validating generated files...' -ForegroundColor Cyan
+
+    # Find all files that were tangled (look for them in the same directories as .org files)
+    $generatedFiles = $orgFiles | ForEach-Object {
+        $dir = $_.DirectoryName
+        # Look for common generated file patterns
+        Get-ChildItem -Path $dir -File | Where-Object {
+            $_.Extension -in @('.kbd', '.ps1', '.json', '.toml') -and
+            $_.Name -notmatch '\.org$'
+        }
+    } | Select-Object -Unique
+
+    $validCount = 0
+    $invalidCount = 0
+
+    foreach ($file in $generatedFiles) {
+        Write-Host "  Validating $($file.Name)..." -NoNewline
+        if (Test-ConfigFile $file.FullName) {
+            Write-Host ' OK' -ForegroundColor Green
+            $validCount++
+        } else {
+            Write-Host ' FAILED' -ForegroundColor Red
+            $invalidCount++
+        }
+    }
+
+    Write-Host ''
+    Write-Host "Validation: $validCount passed, $invalidCount failed." -ForegroundColor $(if ($invalidCount -eq 0) { 'Green' } else { 'Yellow' })
+}
+
+Write-Host ''
+$colour = if ($failCount -eq 0) { 'Green' } else { 'Yellow' }
+Write-Host "Done: $successCount succeeded, $failCount failed." -ForegroundColor $colour
+if ($failCount -gt 0) { exit 1 }
+#+end_src
+
+** verify-org-tangle-sync.ps1
+:PROPERTIES:
+:CUSTOM_ID: verify-org-tangle-sync
+:END:
+
+*Purpose:* Re-tangle a curated list of configs and report whether outputs changed (drift = forgot to tangle, or edited via app UI).
+
+*Trigger:* Manual — =tangle-check= in PowerShell (read-only by default).
+
+*Parameters:* =-ReadOnly= (default =on=) — compare without leaving re-tangled files on disk; use =-ReadOnly:$false= to fix drift in place.
+
+*Exit codes:* =0= in sync, =1= drift detected.
+
+Uses shared =Get-ConfigOrgDriftMap= and =Invoke-EmacsOrgTangle= from [[file:_lib/config-paths.ps1][config-paths.ps1]] (noweb preexecute + kanata post-process).
+
+#+begin_src powershell :tangle utility/verify-org-tangle-sync.ps1
+# Re-tangle curated .org sources and report hash drift.
+# Usage:
+#   .\verify-org-tangle-sync.ps1 -ReadOnly         # compare only; restore disk files (default)
+#   .\verify-org-tangle-sync.ps1 -ReadOnly:$false  # re-tangle in place (fix drift on disk)
+#   .\verify-org-tangle-sync.ps1 -ConfigDir $env:USERPROFILE\.config
+
+param(
+    [string]$ConfigDir = "$env:USERPROFILE\.config",
+
+    # Hash on-disk files vs what .org would produce, then restore originals.
+    [switch]$ReadOnly = $true
+)
+
+$ErrorActionPreference = 'Stop'
+
+. (Join-Path $PSScriptRoot '..\_lib\config-paths.ps1')
+
+$emacsExe = Get-EmacsExecutable -Name emacs
+if (-not $emacsExe) { Write-Error 'Emacs not found.'; exit 1 }
+
+if ($ReadOnly) {
+    Write-Host 'Read-only drift check (on-disk files will be restored after compare).' -ForegroundColor Cyan
+}
+
+$orgOutputs = Get-ConfigOrgDriftMap
+$driftAll = @()
+
+foreach ($orgRel in $orgOutputs.Keys) {
+    $orgPath = Join-Path $ConfigDir $orgRel
+    if (-not (Test-Path -LiteralPath $orgPath)) { continue }
+
+    $before = @{}
+    $backups = [System.Collections.Generic.List[object]]::new()
+    $backupRoot = $null
+
+    if ($ReadOnly) {
+        $backupRoot = Join-Path $env:TEMP ("config-drift-check-$([guid]::NewGuid().ToString('N'))")
+        New-Item -ItemType Directory -Path $backupRoot -Force | Out-Null
+    }
+
+    foreach ($out in $orgOutputs[$orgRel]) {
+        $full = Join-Path $ConfigDir $out
+        if (Test-Path -LiteralPath $full) {
+            $before[$out] = (Get-FileHash -LiteralPath $full -Algorithm SHA256).Hash
+            if ($ReadOnly) {
+                $bak = Join-Path $backupRoot $out
+                $bakDir = Split-Path -Parent $bak
+                if ($bakDir) { New-Item -ItemType Directory -Path $bakDir -Force | Out-Null }
+                Copy-Item -LiteralPath $full -Destination $bak -Force
+                $backups.Add([pscustomobject]@{ Dest = $full; Backup = $bak; Existed = $true })
+            }
+        } elseif ($ReadOnly) {
+            $backups.Add([pscustomobject]@{ Dest = $full; Backup = $null; Existed = $false })
+        }
+    }
+
+    try {
+        Write-Host "Checking $orgRel..." -NoNewline
+        $text = Invoke-EmacsOrgTangle -EmacsExe $emacsExe -OrgPath $orgPath
+        if ($text -notmatch 'Tangled \d+ code block') {
+            Write-Host ' FAIL (tangle)' -ForegroundColor Red
+            continue
+        }
+
+        if ($orgRel -eq 'kanata\kanata.org') {
+            Repair-KanataTangledFiles -KanataDir (Join-Path $ConfigDir 'kanata')
+        }
+
+        $drifted = @()
+        foreach ($out in $orgOutputs[$orgRel]) {
+            $full = Join-Path $ConfigDir $out
+            if (-not (Test-Path -LiteralPath $full)) { continue }
+            $after = (Get-FileHash -LiteralPath $full -Algorithm SHA256).Hash
+            if ($null -ne $before[$out] -and $before[$out] -ne $after) { $drifted += $out }
+        }
+
+        if ($drifted.Count) {
+            Write-Host ' DRIFT' -ForegroundColor Yellow
+            foreach ($d in $drifted) { $driftAll += "$orgRel -> $d" }
+        } else {
+            Write-Host ' OK' -ForegroundColor Green
+        }
+    } finally {
+        if ($ReadOnly) {
+            foreach ($entry in $backups) {
+                if ($entry.Existed) {
+                    Copy-Item -LiteralPath $entry.Backup -Destination $entry.Dest -Force
+                } elseif (Test-Path -LiteralPath $entry.Dest) {
+                    Remove-Item -LiteralPath $entry.Dest -Force
+                }
+            }
+            if ($backupRoot -and (Test-Path -LiteralPath $backupRoot)) {
+                Remove-Item -LiteralPath $backupRoot -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+}
+
+Write-Host ''
+if ($driftAll.Count) {
+    if ($ReadOnly) {
+        Write-Host 'Drift detected (disk differs from .org; files were restored):' -ForegroundColor Yellow
+    } else {
+        Write-Host 'Out of sync — outputs re-tangled on disk. Reload affected apps if needed.' -ForegroundColor Yellow
+    }
+    $driftAll | ForEach-Object { Write-Host "  $_" }
+    if ($ReadOnly) {
+        Write-Host 'Fix: edit .org then run  tangle all  (or tangle <stem>)' -ForegroundColor DarkYellow
+    }
+    exit 1
+}
+
+Write-Host 'All checked configs match their .org sources.' -ForegroundColor Green
+exit 0
+#+end_src
+
+** org-capture.ps1
+
+*Purpose:* PowerShell fallback bridge for Emacs org-protocol capture.
+Receives action (=l=/=t=/=a=/=o=), URL, title; URL-encodes them; calls
+=emacsclientw.exe= directly with the org-protocol URI.
+
+*Trigger:* Not actively used from keybindings (VBS is faster). Kept for
+manual/debug use and as reference for the URL encoding logic.
+
+*Note:* The =startup/organ- = bottleneck was removed — see =org-capture.vbs= for the
+production path (~20ms vs ~274ms PowerShell cold start).
+
+#+begin_src powershell :tangle utility/org-capture.ps1
+param(
+    [Parameter(Mandatory)][string]$Action,
+    [Parameter(Mandatory)][string]$Url,
+    [string]$Title = ""
+)
+
+$actionMap = @{ l = 'journal-log'; t = 'journal-task'; a = 'journal-article'; o = 'org-link' }
+$protocolPath = $actionMap[$Action]
+if (-not $protocolPath) { Write-Error "Unknown action: $Action"; exit 1 }
+
+$encodedUrl   = [System.Uri]::EscapeDataString($Url)
+$encodedTitle = [System.Uri]::EscapeDataString($Title)
+$orgUrl = "org-protocol://$protocolPath`?url=$encodedUrl&title=$encodedTitle"
+& "emacsclientw.exe" -a "emacs" "$orgUrl"
+#+end_src
+
+** org-capture.vbs
+
+*Purpose:* Fast bridge between qutebrowser =:spawn= bindings and Emacs org-protocol.
+Uses =wscript= (~16ms startup) and basic URL encoding to dispatch org-capture URIs
+to emacsclientw. Reads the org-protocol handler path from the registry for robustness.
+
+*Trigger:* Called from qutebrowser keybindings (=yl=/=yt=/=ya=/=yo=) via =:spawn --detach=.
+
+*Benchmark:* ~20ms per capture (vs ~274ms PowerShell). Under 50ms target.
+
+#+begin_src vbscript :tangle utility/org-capture.vbs
+' org-capture.vbs — Bridge between qutebrowser and Emacs org-protocol.
+' Uses wscript (16ms startup) for near-instant captures.
+' Called from qutebrowser as:
+'   wscript //B "...\org-capture.vbs" l "{url}" "{title}"
+'
+' Basic URL encoding handles the common cases (&, #, %, space)
+' that would break the org-protocol query string.
+
+Dim args, action, url, title, actionMap, protocol
+Dim encodedUrl, encodedTitle, uri, handler, cmd, shell
+
+Set args = WScript.Arguments
+If args.Count < 2 Then WScript.Quit 1
+
+action = args(0)
+url    = args(1)
+title  = ""
+If args.Count >= 3 Then title = args(2)
+
+actionMap = CreateObject("Scripting.Dictionary")
+actionMap.Add "l", "journal-log"
+actionMap.Add "t", "journal-task"
+actionMap.Add "a", "journal-article"
+actionMap.Add "d", "denote-link"
+actionMap.Add "o", "org-link"
+
+If Not actionMap.Exists(action) Then WScript.Quit 1
+protocol = actionMap(action)
+
+Function UrlEncode(s)
+    Dim result
+    result = s
+    result = Replace(result, "%", "%25")
+    result = Replace(result, "&", "%26")
+    result = Replace(result, "#", "%23")
+    result = Replace(result, " ", "%20")
+    result = Replace(result, "+", "%2B")
+    result = Replace(result, "=", "%3D")
+    UrlEncode = result
+End Function
+
+encodedUrl   = UrlEncode(url)
+encodedTitle = UrlEncode(title)
+uri = "org-protocol://" & protocol & "?url=" & encodedUrl & "&title=" & encodedTitle
+
+Set shell = CreateObject("WScript.Shell")
+
+On Error Resume Next
+handler = shell.RegRead("HKCR\org-protocol\shell\open\command\")
+On Error Goto 0
+
+If handler <> "" Then
+    cmd = Replace(handler, "%1", uri)
+    shell.Run cmd, 0, False
+Else
+    shell.Run """emacsclientw.exe"" -a emacs """ & uri & """", 0, False
+End If
+#+end_src
+
+** tangle-fallback.ps1
+
+*Purpose:* Generic PowerShell-based block extractor used when Emacs batch-mode
+=org-babel-tangle= fails (org 9.7 / Emacs 30.2 parser bug).  Scans a =.org= file for
+=#+begin_src LANG :tangle TARGET= blocks and writes their content to the target path.
+Handles multiple targets per org file.
+
+*Trigger:* Automatic — invoked by =tangle-configs.ps1= when Emacs produces
+"Tangled 0 code blocks" for a file.
+
+#+begin_src powershell :tangle utility/tangle-fallback.ps1
+<#
+.SYNOPSIS
+  Generic tangle fallback when Emacs batch-mode org-babel-tangle produces 0 blocks.
+  Extracts code blocks from a literate .org file by matching #+begin_src LANG :tangle TARGET
+  patterns and writes each target file. Handles multiple targets per org file.
+.PARAMETER OrgFile
+  Path to the .org file to extract blocks from.
+.PARAMETER ConfigRoot
+  Root directory for resolving relative :tangle paths. Defaults to the org file's parent.
+#>
+param(
+    [Parameter(Mandatory)][string]$OrgFile,
+    [string]$ConfigRoot
+)
+
+if (-not $ConfigRoot) {
+    $ConfigRoot = Split-Path $OrgFile -Parent
+}
+
+$lines = Get-Content $OrgFile -Encoding utf8
+
+$targets = @{}
+$currentTarget = $null
+$inBlock = $false
+
+foreach ($line in $lines) {
+    if ($line -match '^#\+begin_src\s+\w+\s+:tangle\s+(\S+)') {
+        $currentTarget = $Matches[1]
+        if (-not [System.IO.Path]::IsPathRooted($currentTarget)) {
+            $currentTarget = Join-Path $ConfigRoot $currentTarget
+        }
+        $inBlock = $true
+        if (-not $targets.ContainsKey($currentTarget)) {
+            $targets[$currentTarget] = @()
+        }
+    } elseif ($line -match '^#\+end_src') {
+        $inBlock = $false
+        $currentTarget = $null
+    } elseif ($inBlock -and $currentTarget) {
+        $targets[$currentTarget] += $line
+    }
+}
+
+$totalLines = 0
+foreach ($target in $targets.Keys) {
+    $content = $targets[$target]
+    $content | Set-Content $target -Encoding utf8
+    $totalLines += $content.Count
+    Write-Host "  $target ($($content.Count) lines)" -ForegroundColor Green
+}
+Write-Host "Fallback tangle: $($targets.Keys.Count) file(s), $totalLines total lines" -ForegroundColor Cyan
+#+end_src
+
+** org-preexecute-noweb-blocks.el
+
+*Purpose:* Before tangling files with =:noweb yes= (e.g. =kanata.org=), execute named =emacs-lisp= / =powershell= blocks so noweb references like =<<config-scripts-fwd>>= resolve. Loaded automatically by =Invoke-EmacsOrgTangle= in [[file:_lib/config-paths.ps1][config-paths.ps1]].
+
+*Trigger:* Not run directly — used by =tangle-configs.ps1= and =verify-org-tangle-sync.ps1=.
+
+#+begin_src emacs-lisp :tangle utility/org-preexecute-noweb-blocks.el
+;;; org-preexecute-noweb-blocks.el — run before org-babel-tangle when :noweb yes is used.
+(require 'org)
+(require 'ob-tangle)
+
+(defun my/org-preexecute-noweb-blocks ()
+  "Execute emacs-lisp and powershell src blocks so named noweb refs have results."
+  (save-excursion
+    (goto-char (point-min))
+    (condition-case nil
+        (while t
+          (org-babel-next-src-block)
+          (let ((lang (org-element-property :language (org-element-at-point))))
+            (when (member lang '("emacs-lisp" "powershell"))
+              (condition-case nil
+                  (org-babel-execute-src-block nil)
+                (error nil)))))
+      (user-error nil))))
+
+(provide 'org-preexecute-noweb-blocks)
+#+end_src
+
+** check-config-drift.ps1                                           :archived:
+:PROPERTIES:
+:CUSTOM_ID: archived-check-config-drift
+:END:
+
+*Status:* **Archived** — duplicate of =verify-org-tangle-sync.ps1=; use =tangle-check= only.
+
+#+begin_src powershell :tangle archive/utility/check-config-drift.ps1
+# ARCHIVED — duplicate of verify-org-tangle-sync.ps1. Use: tangle-check
+Write-Error 'Archived. Use: tangle-check  (verify-org-tangle-sync.ps1)'
+exit 1
+#+end_src
+
+* Basic Memory Doc Export
+
+** export-basic-memory-docs.ps1
+
+*Purpose:* Export the canonical Denote note-taking-workflow .org →
+=~/basic-memory/bootstrap/note-taking-workflow.md= via =org-export-to-file= (reliable on Windows).
+
+*Trigger:* After editing the canonical .org source. =bm-docs= alias.
+
+#+begin_src powershell :tangle basic-memory/export-basic-memory-docs.ps1
+# Export Denote note-taking-workflow.org -> Basic Memory bootstrap markdown.
+# Usage:
+#   .\export-basic-memory-docs.ps1
+
+$ErrorActionPreference = 'Stop'
+
+. (Join-Path $PSScriptRoot '..\_lib\config-paths.ps1')
+
+$emacsExe = Get-EmacsExecutable -Name emacs
+if (-not $emacsExe) { Write-Error 'Emacs not found'; exit 1 }
+
+$orgFile = Get-ChildItem -Path (Join-Path $env:USERPROFILE 'Documents\org\notes\personal') `
+    -Filter '*note*taking*workflow*.org' | Select-Object -First 1
+if (-not $orgFile) { Write-Error 'note-taking-workflow.org not found'; exit 1 }
+
+$outPath = Join-Path $env:USERPROFILE 'basic-memory\bootstrap\note-taking-workflow.md'
+$orgFwd = ($orgFile.FullName -replace '\\', '/') -replace '"', '\"'
+$outFwd = ($outPath -replace '\\', '/') -replace '"', '\"'
+
+Write-Host "Exporting: $($orgFile.FullName)" -ForegroundColor Cyan
+
+$elispPath = Join-Path $env:TEMP 'export-note-taking-workflow.el'
+@(
+    '(require ''ox-md)'
+    '(setq coding-system-for-write ''utf-8-unix)'
+    "(find-file `"$orgFwd`")"
+    "(org-export-to-file 'md `"$outFwd`")"
+    '(kill-emacs 0)'
+) | Set-Content -Path $elispPath -Encoding utf8
+
+& $emacsExe --batch -l $elispPath 2>&1 | Out-Null
+
+if ($LASTEXITCODE -eq 0 -and (Test-Path -LiteralPath $outPath)) {
+    Write-Host "Exported: $outPath" -ForegroundColor Green
+} else {
+    Write-Error 'Export failed'
+    exit 1
+}
+#+end_src
+
+* PKM System Integrity
+
+** verify-pkm-integrity.ps1
+
+*Purpose:* Validate the PKM system is healthy. Checks:
+1. Root files exist (=tasks.org=, =journal.org=, =notes.org=)
+2. No broken =[[denote:...]]= links (greps for IDs without matching files)
+3. Git remote is reachable
+4. Uncommitted changes in =~/Documents/org/=
+
+*Trigger:* Weekly review / on demand. =pkm-check= alias.
+
+#+begin_src powershell :tangle utility/verify-pkm-integrity.ps1
+# Verify PKM system integrity.
+# Usage:
+#   .\verify-pkm-integrity.ps1
+
+$ErrorActionPreference = 'Continue'
+$orgDir = "$env:USERPROFILE\Documents\org"
+$exitCode = 0
+
+Write-Host '=== PKM Integrity Check ===' -ForegroundColor Cyan
+Write-Host ''
+
+# ── 1. Root files exist ───────────────────────────────────────────────────────
+Write-Host '[1/4] Root files...' -NoNewline
+$required = @('tasks.org', 'journal.org', 'notes.org')
+$missing = @()
+foreach ($f in $required) {
+    if (-not (Test-Path "$orgDir\$f")) { $missing += $f }
+}
+if ($missing.Count -eq 0) {
+    Write-Host ' OK' -ForegroundColor Green
+} else {
+    Write-Host " MISSING: $($missing -join ', ')" -ForegroundColor Red
+    $exitCode = 1
+}
+
+# ── 2. Broken denote links ────────────────────────────────────────────────────
+Write-Host '[2/4] Denote link integrity...' -NoNewline
+$allIds = Get-ChildItem -Path "$orgDir\notes" -Recurse -Filter '*.org' -ErrorAction SilentlyContinue |
+    ForEach-Object { if ($_.BaseName -match '^(\d{8}T\d{6})') { $matches[1] } }
+$idSet = @{}; $allIds | ForEach-Object { $idSet[$_] = $true }
+
+$brokenLinks = Select-String -Path "$orgDir\*.org", "$orgDir\notes\**\*.org" `
+    -Pattern '\[\[denote:(\d{8}T\d{6})\]' -ErrorAction SilentlyContinue |
+    ForEach-Object {
+        $foundId = $_.Matches[0].Groups[1].Value
+        if (-not $idSet.ContainsKey($foundId)) {
+            [PSCustomObject]@{ File = $_.Path; Line = $_.LineNumber; Id = $foundId }
+        }
+    } | Sort-Object Id -Unique
+
+$brokenCount = @($brokenLinks).Count
+if ($brokenCount -eq 0) {
+    Write-Host ' OK' -ForegroundColor Green
+} else {
+    Write-Host " $brokenCount broken link(s)" -ForegroundColor Red
+    $brokenLinks | ForEach-Object { Write-Host "  $($_.Id) in $($_.File):$($_.Line)" }
+    $exitCode = 1
+}
+
+# ── 3. Git remote reachable ───────────────────────────────────────────────────
+Write-Host '[3/4] Git remote...' -NoNewline
+$gitResult = & git -C "$orgDir" remote -v 2>&1 | Select-String 'github.com'
+if ($gitResult) {
+    $remoteCheck = & git -C "$orgDir" ls-remote --exit-code origin HEAD 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host ' OK' -ForegroundColor Green
+    } else {
+        Write-Host ' UNREACHABLE (offline?)' -ForegroundColor Yellow
+    }
+} else {
+    Write-Host ' NO REMOTE CONFIGURED' -ForegroundColor Red
+    $exitCode = 1
+}
+
+# ── 4. Uncommitted changes ────────────────────────────────────────────────────
+Write-Host '[4/4] Git status...' -NoNewline
+$status = & git -C "$orgDir" status --porcelain 2>&1
+if ($LASTEXITCODE -eq 0 -and -not $status) {
+    Write-Host ' Clean' -ForegroundColor Green
+} else {
+    $changeCount = @($status).Count
+    Write-Host " $changeCount uncommitted file(s)" -ForegroundColor Yellow
+    $status | ForEach-Object { Write-Host "  $_" }
+}
+
+Write-Host ''
+if ($exitCode -eq 0) {
+    Write-Host '=== All checks passed ===' -ForegroundColor Green
+} else {
+    Write-Host '=== Issues found ===' -ForegroundColor Red
+}
+exit $exitCode
+#+end_src
+
+* Archived utility scripts
+:PROPERTIES:
+:CUSTOM_ID: archived-utility-scripts
+:END:
+
+One-shot helpers; not in active =utility/= or profile aliases. Run manually from
+=archive/powershell/utility/= when needed.
+
+** complete-t3-junctions.ps1                                  :archived:
+:PROPERTIES:
+:CUSTOM_ID: archived-complete-t3-junctions
+:END:
+
+*Purpose:* Finish XDG junction migration for Cursor and =vscode-shared= when DB files
+were locked during the initial move.
+
+*Status:* **Archived** — migration complete on this machine. Re-run only on a new
+setup after closing Cursor / VS Code / Windsurf.
+
+*Trigger:* Manual, after editors are closed.
+
+#+begin_src powershell :tangle archive/utility/complete-t3-junctions.ps1
+# Archived — finish T3/XDG junctions for cursor and vscode-shared.
+# Run AFTER closing Cursor and VS Code / Windsurf.
+
+$ErrorActionPreference = 'Stop'
+
+function Complete-Junction {
+    param(
+        [string]$Name,
+        [string]$LockedSubpath
+    )
+
+    $src  = "$env:USERPROFILE\.$Name"
+    $dst  = "$env:USERPROFILE\.config\$Name"
+    $lock = Join-Path $src $LockedSubpath
+
+    Write-Host "`n=== $Name ===" -ForegroundColor Cyan
+
+    $item = Get-Item $src -ErrorAction SilentlyContinue
+    if ($item -and $item.LinkType -eq 'Junction') {
+        Write-Host "  Already a junction -> $($item.Target)" -ForegroundColor Green
+        return
+    }
+
+    if (Test-Path $lock) {
+        try {
+            $fs = [System.IO.File]::Open($lock, 'Open', 'Read', 'None')
+            $fs.Close()
+            Write-Host '  Lock released — proceeding.' -ForegroundColor Green
+        } catch {
+            Write-Warning "  $lock is still locked. Close $Name and try again."
+            return
+        }
+    }
+
+    Write-Host "  Moving remaining files from $src -> $dst"
+    robocopy $src $dst /E /MOVE /NFL /NDL /NJH /NJS | Out-Null
+
+    if (Test-Path $src) {
+        Remove-Item $src -Recurse -Force
+    }
+
+    cmd.exe /c "mklink /J `"$src`" `"$dst`"" | Out-Null
+    $j = Get-Item $src
+    if ($j.LinkType -eq 'Junction') {
+        Write-Host "  Junction created: $src <<===>> $dst" -ForegroundColor Green
+    } else {
+        Write-Error "  Junction creation failed for $Name"
+    }
+}
+
+Complete-Junction -Name 'cursor'       -LockedSubpath 'ai-tracking\ai-code-tracking.db'
+Complete-Junction -Name 'vscode-shared' -LockedSubpath 'sharedStorage\state.vscdb'
+
+Write-Host "`nDone. Verify with: Get-Item ~/.cursor, ~/.vscode-shared" -ForegroundColor Cyan
+#+end_src
+
+** register-org-protocol.ps1                                :archived:
+:PROPERTIES:
+:CUSTOM_ID: archived-register-org-protocol
+:END:
+
+*Purpose:* Register =org-protocol://= in Windows → =emacsclientw= for Firefox/Tridactyl
+journal capture (see [[file:../doom/config.org][doom/config.org]] browser section).
+
+*Status:* **Archived** — run once per machine (or after Emacs upgrade). Idempotent.
+
+*Trigger:* Manual; Emacs daemon required for =yl=/=yt= capture keys.
+
+#+begin_src powershell :tangle archive/utility/register-org-protocol.ps1
+# Archived — register org-protocol:// for Emacs org-protocol capture.
+# Idempotent; safe to re-run after Emacs upgrades.
+
+$ErrorActionPreference = 'Stop'
+
+. (Join-Path $env:USERPROFILE '.config\scripts\_lib\config-paths.ps1')
+
+$EmacsClient = Get-EmacsExecutable -Name emacsclientw
+if (-not $EmacsClient) {
+    Write-Error 'emacsclientw.exe not found. Install Emacs or ensure it is on PATH.'
+}
+
+$command = "`"$EmacsClient`" -a emacs `"%1`""
+$root = 'HKCU:\Software\Classes\org-protocol'
+
+New-Item -Path $root -Force | Out-Null
+Set-ItemProperty -Path $root -Name '(default)' -Value 'URL:org-protocol'
+New-ItemProperty -Path $root -Name 'URL Protocol' -Value '' -PropertyType String -Force | Out-Null
+New-Item -Path "$root\shell\open\command" -Force | Out-Null
+Set-ItemProperty -Path "$root\shell\open\command" -Name '(default)' -Value $command
+
+Write-Host "Registered org-protocol -> $command" -ForegroundColor Green
+Write-Host 'Test: emacs daemon must be running, then run:'
+Write-Host '  emacsclientw -a emacs "org-protocol://capture?template=l&url=https%3A%2F%2Fexample.com&title=Test"'
+#+end_src
+
+** elevated-cleanup.ps1                                     :archived:
+:PROPERTIES:
+:CUSTOM_ID: archived-elevated-cleanup
+:END:
+
+*Purpose:* One-off disk hygiene — remove stale Windows folders (=C:\$SysReset=, old
+Office stubs, empty Program Files dirs, Battle.net loader stubs).
+
+*Status:* **Archived** — not part of login. Run from an **elevated** PowerShell when needed.
+
+*Trigger:* Manual admin cleanup only.
+
+#+begin_src powershell :tangle archive/utility/elevated-cleanup.ps1
+# Archived — elevated one-off cleanup. Run as Administrator.
+
+Write-Host 'Elevated cleanup...'
+
+if (Test-Path 'C:\$SysReset') {
+    takeown /F 'C:\$SysReset' /R /D Y 2>$null
+    icacls 'C:\$SysReset' /grant Administrators:F /T 2>$null
+    Remove-Item 'C:\$SysReset' -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host '  [OK] C:\$SysReset'
+}
+
+if (Test-Path 'C:\Program Files\Microsoft Office 15') {
+    Remove-Item 'C:\Program Files\Microsoft Office 15' -Recurse -Force
+    Write-Host '  [OK] Microsoft Office 15'
+}
+
+if (Test-Path 'C:\Program Files (x86)\GnuWin32') {
+    Remove-Item 'C:\Program Files (x86)\GnuWin32' -Recurse -Force
+    Write-Host '  [OK] GnuWin32'
+}
+
+$empty = @(
+    'C:\Program Files\Uninstall Information',
+    'C:\Program Files\Windows Sidebar',
+    'C:\Program Files (x86)\Windows Sidebar'
+)
+foreach ($d in $empty) {
+    if (Test-Path $d) { Remove-Item $d -Force; Write-Host "  [OK] $d" }
+}
+
+$stubs = @(
+    'C:\Program Files (x86)\Diablo IV',
+    'C:\Program Files (x86)\Diablo II Resurrected'
+)
+foreach ($d in $stubs) {
+    if (Test-Path $d) { Remove-Item $d -Recurse -Force; Write-Host "  [OK] $d" }
+}
+
+Write-Host 'All done!'
+#+end_src
+
+* Remote Access
+
+One-time setup scripts plus =ttyd-toggle.ps1= for day-to-day use. Full walkthrough:
+[[denote:20260515T202046][Remote Access Setup]].
+
+** Overview
+
+Two methods, both secured via [[https://tailscale.com/][Tailscale]] mesh VPN (free, personal use):
+
+| Method | Port | Client needed | Use case                                |
+|--------+------+---------------+-----------------------------------------|
+| SSH    | 22   | Termius / any SSH client | Full terminal, file transfer     |
+| ttyd   | 7681 | Phone browser only | Quick lookups, OpenCode access   |
+
+Tailscale creates an encrypted mesh between your devices using your existing Google/Microsoft/Apple identity. Your laptop gets a private Tailscale IP (e.g. =100.x.x.x=) accessible only to your other enrolled devices — no ports exposed to the public internet.
+
+* Archived remote setup
+:PROPERTIES:
+:CUSTOM_ID: archived-remote-setup
+:END:
+
+One-shot installers kept for reference; not in active =remote/= or profile aliases.
+
+** enable-ssh.ps1                                           :archived:
+:PROPERTIES:
+:CUSTOM_ID: archived-enable-ssh
+:END:
+
+*Purpose:* Install and start Windows OpenSSH Server; allow TCP/22 in the firewall.
+
+*Status:* **Archived** — superseded by manual =winget= / Windows Settings. Kept under
+=archive/powershell/remote/=. Former alias =ssh-enable= removed from profile.
+
+*Trigger:* Once per machine. *Requires admin.*
+
+#+begin_src powershell :tangle archive/remote/enable-ssh.ps1
+# Enable OpenSSH Server and configure for key-based auth.
+# Run this ONCE from an elevated PowerShell prompt (alias: ssh-enable).
+
+Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+Set-Service -Name sshd -StartupType Automatic
+Start-Service sshd
+
+New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server' `
+  -Protocol TCP -LocalPort 22 -Action Allow
+
+# Configure sshd to allow public-key auth only (recommended)
+if (-not (Test-Path "$env:ProgramData\ssh\sshd_config")) {
+  Write-Host "sshd_config not found — install completed but config needs review."
+  Write-Host "Run: notepad $env:ProgramData\ssh\sshd_config"
+  Write-Host "Ensure these lines are set:"
+  Write-Host "  PubkeyAuthentication yes"
+  Write-Host "  PasswordAuthentication no"
+}
+
+Write-Host "SSH server installed and running."
+Write-Host "Your username: $env:USERNAME"
+Write-Host "Your hostname: $env:COMPUTERNAME"
+#+end_src
+
+** setup-ssh-keys.ps1                                       :archived:
+:PROPERTIES:
+:CUSTOM_ID: archived-setup-ssh-keys
+:END:
+
+*Purpose:* Create =~/.ssh/id_ed25519= if missing and authorize the public key locally.
+
+*Status:* **Archived** — run once manually if needed; see =archive/powershell/remote/setup-ssh-keys.ps1=.
+
+*Trigger:* Once per user account.
+
+#+begin_src powershell :tangle archive/remote/setup-ssh-keys.ps1
+# Generate SSH key and configure for remote access.
+# Run this once from a normal (non-admin) prompt (alias: ssh-keys).
+
+$keyPath = "$env:USERPROFILE\.ssh\id_ed25519"
+if (-not (Test-Path $keyPath)) {
+  ssh-keygen -t ed25519 -f $keyPath -N '""'
+  Write-Host "SSH key generated at $keyPath"
+} else {
+  Write-Host "SSH key already exists at $keyPath"
+}
+
+# Authorize yourself
+$pubKey = Get-Content "$keyPath.pub"
+$authorizedKeys = "$env:USERPROFILE\.ssh\authorized_keys"
+Set-Content -Path $authorizedKeys -Value $pubKey
+Write-Host "Public key authorized for local login."
+
+Write-Host ""
+Write-Host "=== TO ADD YOUR PHONE ==="
+Write-Host "1. On your phone (Termius/JuiceSSH), generate an SSH key pair"
+Write-Host "2. Copy the public key and paste it into this file:"
+Write-Host "   $env:ProgramData\ssh\administrators_authorized_keys"
+Write-Host "   (must be run as admin, no trailing newline issues)"
+Write-Host ""
+Write-Host "=== TYPICAL LOGIN ==="
+Write-Host "ssh $env:USERNAME@$env:COMPUTERNAME"
+Write-Host "(or use the Tailscale IP after installing Tailscale)"
+#+end_src
+
+** enable-ttyd-firewall.ps1
+
+*Purpose:* Create inbound firewall rule for ttyd on port 7681 with =-Profile Any= (Tailscale uses Private).
+
+*Trigger:* Once after =winget install ttyd=. *Requires admin.* Not aliased (rare).
+
+#+begin_src powershell :tangle remote/enable-ttyd-firewall.ps1
+# ttyd Firewall Rule — run once as admin after installing ttyd.
+# IMPORTANT: specify -Profile Any; Tailscale uses Private profile.
+
+. (Join-Path $env:USERPROFILE '.config\scripts\_lib\config-paths.ps1')
+
+$ttydBin = Resolve-WinGetPackageExe -PackageIdPart 'tsl0922.ttyd' -ExeFileName 'ttyd.exe'
+if (-not $ttydBin) {
+    Write-Error 'ttyd.exe not found. Install with: winget install tsl0922.ttyd'
+    exit 1
+}
+
+# Remove any existing rules (including auto-created "Query User" rules)
+Get-NetFirewallRule | Where-Object { $_.DisplayName -eq "ttyd.exe" } | Remove-NetFirewallRule
+
+New-NetFirewallRule -DisplayName "ttyd (7681)" -Direction Inbound -Protocol TCP -LocalPort 7681 -Program $ttydBin -Action Allow -Profile Any -Enabled True
+
+Write-Host "ttyd firewall rule created (Profile: Any)."
+#+end_src
+
+** ttyd-toggle.ps1
+
+*Purpose:* Start, stop, or query the browser-facing terminal (port 7681, =cmd.exe= backend).
+
+*Trigger:* On demand when accessing the machine from a phone browser over Tailscale.
+
+*Shell:* =webterm=, =webterm start=, =webterm stop=, =webterm status=.
+
+#+begin_src powershell :tangle remote/ttyd-toggle.ps1
+# ttyd-toggle.ps1 — Start or stop the ttyd web terminal server.
+# Usage: webterm [start|stop|status]  (alias in PowerShell profile)
+#   start  — Launch ttyd in background on port 7681
+#   stop   — Kill any running ttyd process
+#   status — Show whether ttyd is running
+#
+# Shell: cmd.exe (pwsh.exe crashes ttyd within minutes — root cause unknown)
+# Detach: uses WScript.Run via temp VBS to avoid job-object cleanup on parent exit
+#
+# Access in browser via: http://localhost:7681
+# Or via Tailscale IP:   http://100.x.x.x:7681
+
+param(
+  [ValidateSet('start','stop','status')]
+  [string]$Action = 'status'
+)
+
+. (Join-Path $env:USERPROFILE '.config\scripts\_lib\config-paths.ps1')
+
+$ttydBin = Resolve-WinGetPackageExe -PackageIdPart 'tsl0922.ttyd' -ExeFileName 'ttyd.exe'
+if (-not $ttydBin) {
+    Write-Error 'ttyd.exe not found. Install with: winget install tsl0922.ttyd'
+    exit 1
+}
+$port = 7681
+
+switch ($Action) {
+  'start' {
+    $running = Get-Process -Name ttyd -ErrorAction SilentlyContinue
+    if ($running) {
+      Write-Host "ttyd already running (PID $($running.Id)) on port $port"
+    } else {
+      $vbsContent = @'
+Set WshShell = CreateObject("WScript.Shell")
+WshShell.Run """#BIN#"" #ARGS#", 0, False
+'@.Replace("#BIN#", $ttydBin).Replace("#ARGS#", "-p $port -W cmd.exe")
+      $vbsFile = Join-Path $env:TEMP "start-ttyd.vbs"
+      $vbsContent | Out-File -FilePath $vbsFile -Encoding ASCII -Force
+      Start-Process wscript -ArgumentList "`"$vbsFile`"" -WindowStyle Hidden
+      Start-Sleep 2
+      $proc = Get-Process -Name ttyd -ErrorAction SilentlyContinue
+      if ($proc) {
+        Write-Host "ttyd started (PID $($proc.Id)) on http://localhost:$port"
+        $tsIp = & "C:\Program Files\Tailscale\tailscale.exe" ip -4 2>$null
+        if ($tsIp) { Write-Host "From Tailscale: http://${tsIp}:$port" }
+      } else {
+        Write-Host "ERROR: ttyd failed to start" -ForegroundColor Red
+      }
+    }
+  }
+  'stop' {
+    $running = Get-Process -Name ttyd -ErrorAction SilentlyContinue
+    if ($running) {
+      $running | Stop-Process -Force
+      Write-Host "ttyd stopped"
+    } else {
+      Write-Host "ttyd is not running"
+    }
+  }
+  'status' {
+    $running = Get-Process -Name ttyd -ErrorAction SilentlyContinue
+    if ($running) {
+      Write-Host "ttyd is RUNNING (PID $($running.Id)) on port $port"
+      Write-Host "Local:  http://localhost:$port"
+    } else {
+      Write-Host "ttyd is STOPPED"
+    }
+  }
+}
+#+end_src
+
+** install-tailscale.ps1                                    :archived:
+:PROPERTIES:
+:CUSTOM_ID: archived-install-tailscale
+:END:
+
+*Purpose:* Install Tailscale via winget and print next-step instructions.
+
+*Status:* **Archived** — Tailscale is installed once per machine; =startup-orchestrator.vbs=
+assumes it is already present. Use =winget install Tailscale.Tailscale= directly.
+
+*Trigger:* Once per machine. *Requires admin.*
+
+#+begin_src powershell :tangle archive/remote/install-tailscale.ps1
+# Install Tailscale and authenticate.
+# Run this from an elevated prompt.
+
+winget install Tailscale.Tailscale
+
+Write-Host ""
+Write-Host "=== NEXT STEPS ==="
+Write-Host "1. On your phone, install the Tailscale app from App Store / Play Store"
+Write-Host "2. Sign into the same account on both devices (Google/Microsoft/Apple)"
+Write-Host "3. On the laptop, run: tailscale up"
+Write-Host "   (this opens a browser to authenticate)"
+Write-Host "4. Once both devices show in the Tailscale admin console,"
+Write-Host "   you can reach this laptop at: ssh $env:USERNAME@$(hostname)"
+Write-Host "   or by its Tailscale IP (shown in tailscale status)"
+#+end_src
+
+* Hermes Agent healthcheck
+
+** hermes-gateway-healthcheck.ps1
+
+*Purpose:* Watches the Hermes gateway for silent failure (connected but not
+processing messages). Restarts the gateway if no message activity logged in the
+last 30 minutes.
+
+*Trigger:* Called every 2 minutes by =hermes-gateway-healthcheck-daemon.ps1=.
+
+#+begin_src powershell :tangle hermes/hermes-gateway-healthcheck.ps1 :mkdirp yes
+# hermes-gateway-healthcheck.ps1
+# Watches the Hermes gateway for silent failure (connected but not processing messages).
+# Restarts the gateway if no message activity logged in the last 30 minutes.
+#
+# Called every 2 minutes by hermes-gateway-healthcheck-daemon.ps1 (persistent loop).
+
+param(
+    [int]$SilenceThresholdMinutes = 30,
+    [string]$GatewayLog = "$env:USERPROFILE\.local\share\hermes\logs\gateway.log"
+)
+
+$hermesExe = "$env:LOCALAPPDATA\hermes\hermes-agent\venv\Scripts\hermes.exe"
+
+# Check if gateway process is running
+# NOTE: Get-Process -Name "hermes" returns ALL hermes.exe instances including
+# CLI sessions (hermes chat). We must filter to only the gateway process
+# (launched with "gateway run" args) to avoid killing the CLI session.
+$allHermes = Get-Process -Name "hermes" -ErrorAction SilentlyContinue
+$gatewayProc = $null
+foreach ($proc in $allHermes) {
+    $cmd = (Get-WmiObject Win32_Process -Filter "ProcessId=$($proc.Id)").CommandLine
+    if ($cmd -match 'gateway\s+(run|start)') {
+        $gatewayProc = $proc
+        break
+    }
+}
+# Fallback: if no gateway found by command line but only one hermes process exists, use it
+if (-not $gatewayProc -and $allHermes.Count -eq 1) {
+    $gatewayProc = $allHermes[0]
+}
+if (-not $gatewayProc) {
+    Write-Output "[$(Get-Date -Format 'HH:mm:ss')] Gateway process not found - starting it."
+    Start-Process $hermesExe -ArgumentList "gateway", "run", "--replace" -WindowStyle Hidden
+    exit
+}
+
+# Check if log exists
+if (-not (Test-Path $GatewayLog)) {
+    Write-Output "[$(Get-Date -Format 'HH:mm:ss')] gateway.log not found yet — gateway probably still starting."
+    exit
+}
+
+# Read last 200 lines, find lines with message activity, parse timestamps
+# Resolve the log path to avoid $env expansion surprises
+$resolvedLog = $ExecutionContext.InvokeCommand.ExpandString($GatewayLog)
+$lines = Get-Content $resolvedLog -Tail 200 -ErrorAction SilentlyContinue
+$lastActivity = $null
+$lastTimestamp = $null
+
+foreach ($line in $lines) {
+    if ($line -match "(inbound message|response ready|Flushing text batch)") {
+        # Extract timestamp from log line: "2026-06-02 06:23:57,489 INFO ..."
+        if ($line.Length -ge 19) {
+            $ts = $line.Substring(0, 19)
+            $parsed = $false
+            $dt = $null
+            try {
+                $dt = [datetime]::ParseExact($ts, 'yyyy-MM-dd HH:mm:ss', [cultureinfo]::InvariantCulture)
+                $parsed = $true
+            } catch {
+                # skip unparseable
+            }
+            if ($parsed) {
+                if (-not $lastActivity -or $dt -gt $lastActivity) {
+                    $lastActivity = $dt
+                    $lastTimestamp = $ts
+                }
+            }
+        }
+    }
+}
+
+if (-not $lastActivity) {
+    Write-Output "[$(Get-Date -Format 'HH:mm:ss')] No message activity found in gateway log - restarting."
+    Stop-Process -Id $gatewayProc.Id -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+    Start-Process $hermesExe -ArgumentList "gateway", "run", "--replace" -WindowStyle Hidden
+    exit
+}
+
+$cutoff = (Get-Date).AddMinutes(-$SilenceThresholdMinutes)
+if ($lastActivity -lt $cutoff) {
+    Write-Output "[$(Get-Date -Format 'HH:mm:ss')] Last activity at $lastTimestamp — over ${SilenceThresholdMinutes}m ago. Restarting gateway (silent failure)."
+    Stop-Process -Id $gatewayProc.Id -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+    Start-Process $hermesExe -ArgumentList "gateway", "run", "--replace" -WindowStyle Hidden
+    exit
+}
+
+Write-Output "[$(Get-Date -Format 'HH:mm:ss')] Health check OK - last activity: $lastTimestamp"
+#+end_src
+
+** hermes-gateway-healthcheck-daemon.ps1
+
+*Purpose:* Persistent daemon that runs the gateway health check on a 2-minute
+loop. Replaces the scheduled-task approach (which caused CMD window flashes on
+each run).
+
+*Trigger:* Launched once at boot by =startup-orchestrator.ps1= (Group 4).
+
+#+begin_src powershell :tangle hermes/hermes-gateway-healthcheck-daemon.ps1 :mkdirp yes
+# hermes-gateway-healthcheck-daemon.ps1
+# Persistent daemon that runs the gateway health check on a 2-minute loop.
+# Replaces the scheduled-task approach (which caused CMD window flashes on each run).
+# Launched once at boot by startup-orchestrator.ps1 (Group 4).
+#
+# If the daemon dies between reboots, the gateway still runs fine — it just won't
+# be automatically resurrected if it silently fails. The orchestrator re-launches
+# at next boot.
+
+param(
+    [int]$SilenceThresholdMinutes = 30,
+    [int]$CheckIntervalSeconds = 120
+)
+
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$healthCheckPs1 = Join-Path $scriptDir "hermes-gateway-healthcheck.ps1"
+$daemonLog = "$env:USERPROFILE\.local\share\hermes\logs\healthcheck-daemon.log"
+
+# Redirect ALL output to the daemon log so nothing leaks to a console
+Start-Transcript -Path $daemonLog -Append | Out-Null
+
+Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Health check daemon starting (interval=${CheckIntervalSeconds}s, silence=${SilenceThresholdMinutes}m)"
+
+while ($true) {
+    try {
+        & $healthCheckPs1 -SilenceThresholdMinutes $SilenceThresholdMinutes 2>&1 | ForEach-Object {
+            Write-Output "[$(Get-Date -Format 'HH:mm:ss')] $_"
+        }
+    } catch {
+        Write-Output "[$(Get-Date -Format 'HH:mm:ss')] ERROR in health check: $_"
+    }
+    Start-Sleep -Seconds $CheckIntervalSeconds
+}
+
+# Never reached
+Stop-Transcript | Out-Null
+#+end_src
+
+** startup-orchestrator.ps1
+
+*Purpose:* PowerShell master startup script replacing the VBS version. Launches
+everything in four timed groups with richer process management (wait helpers,
+WinGet resolution, etc.).
+
+*Trigger:* Copied to =C:\ProgramData\...\StartUp\startup-orchestrator.ps1=
+(replaces the legacy =.vbs=).
+
+#+begin_src powershell :tangle startup/startup-orchestrator.ps1 :mkdirp yes
+# startup-orchestrator.ps1 — Master startup script.
+# Replaces all individual shortcuts in the ProgramData Startup folder.
+
+function Wait-ForProcess {
+    param($Name, $TimeoutSecs = 10)
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    while (-not (Get-Process -Name $Name -ErrorAction SilentlyContinue)) {
+        if ($sw.Elapsed.TotalSeconds -gt $TimeoutSecs) { return $false }
+        Start-Sleep -Milliseconds 250
+    }
+    return $true
+}
+
+$profile = $env:USERPROFILE
+$configRoot = "$profile\.config"
+$kanataDir = "$configRoot\kanata"
+
+. (Join-Path $profile '.config\scripts\_lib\config-paths.ps1')
+
+# ===== Group 0: Enforce Windows settings before anything else =====
+$enforceScript = "$profile\.config\scripts\komorebi\enforce-windows-settings.ps1"
+if (Test-Path $enforceScript) {
+    Start-Process "pwsh.exe" -ArgumentList "-ExecutionPolicy Bypass -NonInteractive -WindowStyle Hidden -File `"$enforceScript`"" -WindowStyle Hidden
+}
+
+$emacsRun = Get-EmacsExecutable -Name runemacs
+$espansoExe = "$env:LOCALAPPDATA\Programs\Espanso\espansod.exe"
+$kanataExe = "$kanataDir\kanata_windows_gui_wintercept_cmd_allowed_x64.exe"
+
+# ===== Group 1: Background services =====
+$tailscaleExe = (Get-Command 'tailscale-ipn.exe' -ErrorAction SilentlyContinue).Source
+if (-not $tailscaleExe) { $tailscaleExe = "C:\Program Files\Tailscale\tailscale-ipn.exe" }
+if (Test-Path $tailscaleExe) { Start-Process $tailscaleExe -WindowStyle Hidden -ErrorAction SilentlyContinue }
+
+if (Test-Path "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe") {
+    Start-Process "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe" -ArgumentList "serve" -WindowStyle Hidden -ErrorAction SilentlyContinue
+}
+$ps1 = "$profile\.config\scripts\basic-memory\start-basic-memory-server.ps1"
+if (Test-Path $ps1) {
+    Start-Process "pwsh.exe" -ArgumentList "-ExecutionPolicy Bypass -NonInteractive -WindowStyle Hidden -File `"$ps1`"" -WindowStyle Hidden
+}
+
+if ($emacsRun) {
+    Start-Process $emacsRun -ArgumentList "--init-directory `"$configRoot\emacs`" --daemon --chdir `"$profile`"" -WindowStyle Hidden
+}
+
+# Start menu killer — kills StartMenuExperienceHost + SearchHost on a 1s cycle
+# so the Win11 Start menu and taskbar search dropdown cannot render. IFEO does
+# not work on Win11 25H2 (UWP packages bypass it); a persistent watchdog is
+# the only reliable mechanism.
+$smkPs1 = "$profile\.config\scripts\startup\start-menu-killer.ps1"
+if (Test-Path $smkPs1) {
+    Start-Process "pwsh.exe" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$smkPs1`"" -WindowStyle Hidden
+}
+
+Start-Sleep -Seconds 2
+
+# ===== Group 2: Lightweight user apps =====
+if (Test-Path $espansoExe) { Start-Process $espansoExe -ArgumentList "launcher" -WindowStyle Hidden }
+if (Test-Path $kanataExe) {
+  # Pass all 3 configs so the tray icon shows switchable profiles.
+  $allArgs = @("-c", "$kanataDir\kanata.kbd", "-c", "$kanataDir\external.kbd", "-c", "$kanataDir\kanata-plain.kbd")
+  Start-Process $kanataExe -ArgumentList $allArgs -WorkingDirectory $kanataDir -WindowStyle Hidden
+}
+
+Start-Sleep -Seconds 2
+
+# ===== Group 3: WTQ → Komorebi =====
+# ORDERING: WTQ starts WezTerm with the --class QuakeTerm argument.
+# Because WezTerm is a native Win32 app, the class is applied at process birth.
+# Komorebi's ignore_rules match this class instantly, so the race conditions
+# that plagued Windows Terminal are permanently solved.
+$wtqExe = Resolve-WinGetPackageExe -PackageIdPart 'flyingpie.windows-terminal-quake' -ExeFileName 'wtq.exe'
+if ($wtqExe) { Start-Process $wtqExe -WindowStyle Hidden }
+
+# Wait for WTQ to initialize its WezTerm instance before launching Komorebi.
+Wait-ForProcess -Name "wtq" -TimeoutSecs 10 | Out-Null
+Start-Sleep -Seconds 5
+
+$komorebicExe = (Get-Command 'komorebic-no-console.exe' -ErrorAction SilentlyContinue).Source
+if (-not $komorebicExe) { $komorebicExe = "C:\Program Files\komorebi\bin\komorebic-no-console.exe" }
+if (Test-Path $komorebicExe) {
+    Start-Process $komorebicExe -ArgumentList "start --ffm --config `"$profile\.config\komorebi\komorebi.json`"" -WindowStyle Hidden
+}
+
+# Wait for komorebi daemon to fully start before launching bars
+Wait-ForProcess -Name "komorebi" -TimeoutSecs 10 | Out-Null
+Start-Sleep -Seconds 3
+
+# Start standalone bar instances for dual monitors
+$barConfigs = @(
+    "$profile\.config\komorebi\komorebi.bar.json",
+    "$profile\.config\komorebi\komorebi.bar.top.json"
+)
+$barExe = (Get-Command 'komorebi-bar.exe' -ErrorAction SilentlyContinue).Source
+if (-not $barExe) { $barExe = "C:\Program Files\komorebi\bin\komorebi-bar.exe" }
+if (Test-Path $barExe) {
+    foreach ($config in $barConfigs) {
+        if (Test-Path $config) {
+            Start-Process -FilePath $barExe -ArgumentList '--config', $config -WindowStyle Hidden -ErrorAction SilentlyContinue
+        }
+    }
+}
+# ===== Group 4: AI services =====
+Start-Sleep -Seconds 2
+$hermesExe = "$env:LOCALAPPDATA\hermes\hermes-agent\venv\Scripts\hermes.exe"
+if (Test-Path $hermesExe) {
+    Start-Process "pwsh.exe" -ArgumentList "-WindowStyle Hidden -Command `"& '$hermesExe' gateway run --replace`"" -WorkingDirectory $profile -WindowStyle Hidden
+}
+# Gateway health watchdog — persistent daemon (loop, not scheduled task)
+$daemonPs1 = "$profile\.config\scripts\hermes\hermes-gateway-healthcheck-daemon.ps1"
+if (Test-Path $daemonPs1) {
+    Start-Process "powershell.exe" -ArgumentList "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$daemonPs1`"" -WindowStyle Hidden
+}
+#+end_src
+
+* Documentation map
+
+Keep these in sync when paths or aliases change:
+
+| Location | Contents |
+|----------+----------|
+| =scripts.org= (this file) | Inventory, Purpose/Trigger per script, alias table |
+| [[file:README.org][scripts/README.org]] | Quick alias table + key scripts |
+| [[file:../powershell/README.org][powershell/README.org]] | Profile aliases + =tangle= usage |
+| [[file:../README.org][~/.config/README.org]] | Edit-tangle-reload loop |
+| [[file:../basic-memory/basic-memory.org][basic-memory.org]] | MCP startup chain |
+| [[denote:20260509T122100][Scripts]] | Denote tools reference |
+| [[denote:20260514T210000][Basic Memory]] | Denote AI/memory reference |
+| [[denote:20260515T202046][Remote Access Setup]] | SSH / ttyd / Tailscale |
+| =~/basic-memory/index.md= | Basic Memory master index (AI entry point) |
+| =~/basic-memory/bootstrap/note-taking-workflow.md= | Tangled export from Denote (canonical .org is source) |
+| =~/basic-memory/reference/filesystem-map.md= | File layout map for AI agents |
+
+* Related Notes
+- [[denote:20260509T122100][Scripts]] — PKM tools note
+- [[denote:20260515T202046][Remote Access Setup]] — SSH, ttyd, and Tailscale documentation
+- [[denote:20260509T150000][MOC — Tools]] — Tools knowledge map
+- [[denote:20260509T150100][MOC — PKM]] — PKM system overview
+- =~/.config/ttyd/ttyd.org= — ttyd literate reference

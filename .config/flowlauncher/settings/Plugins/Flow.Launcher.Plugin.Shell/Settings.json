@@ -1,0 +1,17 @@
+{
+  "Shell": 1,
+  "ReplaceWinR": false,
+  "CloseShellAfterPress": false,
+  "LeaveShellOpen": false,
+  "RunAsAdministrator": true,
+  "UseWindowsTerminal": true,
+  "ShowOnlyMostUsedCMDs": false,
+  "ShowOnlyMostUsedCMDsNumber": 5,
+  "CommandHistory": {
+    "komorebic start --whkd": 1,
+    "emacs .": 1,
+    "wtq": 1,
+    "komorebic stop": 2,
+    "fkill emacs": 1
+  }
+}

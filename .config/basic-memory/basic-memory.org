@@ -1,0 +1,387 @@
+#+title:      Basic Memory � Shared AI Memory Backend
+#+date:       [2026-05-14 Wed]
+#+filetags:   :tools:ai:memory:
+#+PROPERTY:   header-args:powershell :tangle no :mkdirp yes
+#+PROPERTY:   header-args:json       :tangle no :mkdirp yes
+#+OPTIONS:    toc:2 num:nil broken-links:mark
+#+STARTUP:    overview
+
+#+begin_quote
+? *DO NOT EDIT GENERATED FILES DIRECTLY.*
+
+This =basic-memory.org= file is the source of truth for MCP snippets and bootstrap
+scripts defined below. The login startup trigger is maintained in
+[[file:../scripts/scripts.org::*Common Startup (=ProgramData=)][scripts.org ? Common Startup]] � edit and tangle =scripts.org= to change it. For everything in *this* file, edit here, then tangle with
+=tangle basic-memory= (or =M-x org-babel-tangle=) to regenerate tangled outputs.
+#+end_quote
+
+* Overview
+
+Basic Memory is a local, offline memory backend shared across all AI coding
+assistants: Claude Code, Cursor, Windsurf, VS Code Copilot Chat, and the
+GitHub Copilot CLI.
+
+Every memory is a plain Markdown file in =~/basic-memory/=. AI agents write
+and read using MCP tools (=write_note=, =search_notes=, =build_context=,
+etc.). The files live on disk like any other text � you can browse them in
+Doom, search with =rg=, and version them with git.
+
+** Org File Safety
+
+*Your org files are never touched.* The bootstrap step works like this:
+
+#+begin_example
+~/Documents/org/notes/tools/example__tools_reference.org   ? ORIGINAL � read-only input
+           �
+           �  pandoc (reads, never writes back)
+           ?
+~/basic-memory/bootstrap/example.md ? NEW FILE � separate directory
+#+end_example
+
+Pandoc reads org files as source and writes brand-new Markdown files into
+=~/basic-memory/bootstrap/=. Deleting =~/basic-memory/= has no effect on org notes; they remain in their original location.
+
+** Why HTTP Transport (not stdio)
+
+Each AI client that uses stdio would spawn its own =basic-memory= subprocess.
+All subprocesses share the same SQLite index file and would produce
+"database is locked" errors under concurrent writes. Running a single
+persistent HTTP server on port 8765 eliminates contention entirely.
+
+** Architecture
+
+#+begin_example
+          +-----------------------------------------+
+          �  basic-memory mcp                       �
+          �    --transport streamable-http          �
+          �    --host 127.0.0.1 --port 8765         �
+          �  (one background process, starts at     �
+          �   login via VBScript in Startup folder) �
+          �  Data:  ~/basic-memory/                 �
+          �  Index: ~/.basic-memory/main.db         �
+          +-----------------------------------------+
+                         � HTTP localhost:8765
+     +-------------------+--------------------------------+
+     �         �         �          �           �          �
++----?---+ +---?---+ +---?----+ +---?------+ +---?------+
+�Claude  � �Cursor � �Windsurf� �VS Code / � �Copilot  �
+�Code    � �       � �        � �Copilot   � �CLI       �
++--------+ +-------+ +--------+ +----------+ +----------+
+#+end_example
+
+** Copilot Surface Coverage
+
+| Surface              | MCP Support | Config                                  |
+|----------------------+-------------+-----------------------------------------|
+| VS Code Copilot Chat | ? Full     | =~/AppData/Roaming/Code/User/mcp.json=  |
+| Copilot CLI          | ? Full     | =~/.copilot/mcp-config.json=            |
+| copilot.el (Emacs)   | ? None     | Completions-only; no context API        |
+| Copilot Desktop/Web  | ? Unknown  | Cloud-hosted; no local MCP support yet  |
+
+*copilot.el gap*: Workaround � open a =~/basic-memory/= file in a nearby Doom buffer so Copilot's local context window picks it up for completions.
+
+** Backup
+
+=~/basic-memory/= is a git repository with remote at [[https://github.com/namefailed/basic-memory][github.com/namefailed/basic-memory]]:
+
+#+begin_src shell :tangle no
+cd ~/basic-memory && git add . && git commit -m "YYYY-MM-DD: snapshot" && git push
+#+end_src
+
+* Overview & Architecture
+
+Basic Memory is a custom MCP (Model Context Protocol) server designed for offline, shared AI memory.
+
+**Why Basic Memory?**
+Agents like Claude Code, Cursor, and Windsurf often suffer from "context amnesia" between sessions. Basic Memory runs as a local HTTP server that exposes the Documents/org/notes/ directory to these agents as an indexed, queryable database. This acts as a permanent, shared brain across all AI tools on this machine.
+
+=.gitattributes= enforces LF line endings on all text files (=* text=auto eol=lf=)
+to prevent CRLF issues on Windows. If files are lost, recover from the local
+SQLite database: =~/.basic-memory/memory.db= (chunked text survives in
+=search_vector_chunks=; see changelog for the 2026-05-17 corruption incident).
+
+** Project Path
+
+Basic Memory uses =~/basic-memory/= as its default project directory.
+All clients connect to the single shared =main= project.
+
+* Startup � VBScript in Common Startup Folder
+
+The server starts at login via a VBScript placed in the *all-users* Startup folder
+(ProgramData � requires admin to install or replace):
+=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\=
+
+The VBScript calls a PowerShell helper script (=start-basic-memory-server.ps1=) rather than
+launching Python directly. This two-layer design keeps the VBScript dead-simple
+(no complex quoting) and keeps all process-launch logic in PowerShell where it
+is easy to test and modify.
+
+Chain: =startup-orchestrator.vbs= (Group 1) ? =start-basic-memory-server.ps1= ? venv =python.exe=
+
+** Why not Task Scheduler
+
+Task Scheduler was tried and abandoned. =basic-memory.exe= (and the copy in
+=~/.local/bin/=) are both *uv trampolines* � thin launchers that resolve their
+Python environment at runtime. They fail with =uv trampoline failed to
+canonicalize script path= in non-interactive Task Scheduler sessions because
+the path-resolution context is wrong. =uvx= was also tried; it worked but
+downloaded the full environment on every fresh boot, making startup unreliable.
+
+The fix is to invoke the venv Python directly, bypassing the trampoline.
+
+** Windows Scripting Gotchas
+
+Two issues encountered during setup:
+
+*** VBScript � WScript.Shell.Run uses a stripped PATH
+
+=oShell.Run "pwsh.exe ..."= fails silently: =WScript.Shell= does not inherit
+the user's full =PATH= so =pwsh.exe= is not found. Always use the absolute path:
+
+#+begin_example
+"C:\Program Files\PowerShell\7\pwsh.exe"
+#+end_example
+
+*** PowerShell � Start-Process -ArgumentList does not quote arguments
+
+=Start-Process -ArgumentList '-c', $code= joins elements with spaces but does
+*not* add quotes around arguments that contain spaces. If =$code= contains
+spaces (all Python =-c= payloads do), only the first word reaches Python.
+
+Fix: add inner quotes manually using backtick-double-quote escaping:
+
+#+begin_src powershell :tangle no
+Start-Process -FilePath $python `
+    -ArgumentList '-c', "`"$code`"", 'mcp', '--transport', 'streamable-http', ...
+#+end_src
+
+This produces the command line =-c "from basic_memory�" mcp �= where the
+Python code is a single quoted argument.
+
+** Real executable path
+
+The uv tool venv lives at:
+
+#+begin_example
+%APPDATA%\uv\tools\basic-memory\Scripts\
+#+end_example
+
+Inline PowerShell invocation (idiomatic; use in scripts, not interactive shells):
+
+#+begin_src powershell :tangle no
+$python = "$env:APPDATA\uv\tools\basic-memory\Scripts\python.exe"
+$code   = 'from basic_memory.cli.main import app; app(standalone_mode=False)'
+Start-Process -FilePath $python `
+    -ArgumentList '-c', "`"$code`"", 'mcp', '--transport', 'streamable-http', '--host', '127.0.0.1', '--port', '8765' `
+    -WindowStyle Hidden
+#+end_src
+
+** start-basic-memory-server.ps1
+
+Canonical source: [[file:../scripts/scripts.org::*Basic Memory][scripts.org ? Basic Memory]]
+(tangled to =~/.config/scripts/basic-memory/start-basic-memory-server.ps1=). Idempotent:
+exits if port 8765 is already bound. Called by the VBScript at login and safe to
+run manually.
+
+** Startup Orchestrator
+
+Startup is now managed by =startup-orchestrator.vbs=, defined and tangled from
+[[file:../scripts/scripts.org::*Common Startup (=ProgramData=)][scripts.org ? Common Startup]].
+See the =startup-orchestrator= deploy snippet there for installation instructions.
+
+* MCP Client Configurations
+** Claude Code
+
+Merge this entry into =~/.claude/settings.json= inside the =mcpServers=
+object, alongside the existing =emacs= entry. Claude Code does not support
+an external =mcp.json= � its MCP servers live in =settings.json= only.
+
+The tangle block below produces a standalone snippet for reference; apply
+it manually with a text editor or let Claude Code do it directly.
+
+#+begin_src json :tangle claude-code-mcp-snippet.json
+{
+  "basic-memory": {
+    "url": "http://127.0.0.1:8765/mcp"
+  }
+}
+#+end_src
+
+** Cursor
+
+#+begin_src json :tangle ~/.cursor/mcp.json
+{
+  "mcpServers": {
+    "basic-memory": {
+      "url": "http://127.0.0.1:8765/mcp"
+    }
+  }
+}
+#+end_src
+
+** Windsurf
+
+#+begin_src json :tangle ~/.codeium/windsurf/mcp_config.json
+{
+  "mcpServers": {
+    "basic-memory": {
+      "url": "http://127.0.0.1:8765/mcp"
+    }
+  }
+}
+#+end_src
+
+** VS Code Copilot Chat
+
+Ensure VS Code = 1.99 and =chat.mcp.enabled: true= in settings. After
+tangling, restart VS Code. Tools appear in the Copilot Chat tools picker:
+=write_note=, =read_note=, =search_notes=, =build_context=, =recent_activity=.
+
+#+begin_src json :tangle ~/.config/vscode/mcp.json
+{
+  "servers": {
+    "basic-memory": {
+      "url": "http://127.0.0.1:8765/mcp"
+    }
+  }
+}
+#+end_src
+
+#+begin_quote
+*Note*: VS Code's user-level MCP file lives at
+=~/AppData/Roaming/Code/User/mcp.json=. The tangle block above writes the
+Basic Memory entry to =~/.config/vscode/mcp.json= (alongside =vscode.org=
+settings). Copy or merge into AppData after verifying:
+
+  Copy-Item "$env:USERPROFILE\.config\vscode\mcp.json" "$env:APPDATA\Code\User\mcp.json"
+#+end_quote
+
+** Copilot CLI
+
+The GitHub Copilot CLI (=gh copilot suggest= / =gh copilot explain=) reads
+MCP server config from =~/.copilot/mcp-config.json=.
+
+#+begin_src json :tangle ~/.copilot/mcp-config.json
+{
+  "mcpServers": {
+    "basic-memory": {
+      "url": "http://127.0.0.1:8765/mcp"
+    }
+  }
+}
+#+end_src
+
+** copilot.el (Emacs) � Known Gap
+
+=copilot.el= is a tab-completion plugin. It has no MCP API, no chat
+interface, and no context-injection endpoint. There is no way to wire
+Basic Memory into it directly.
+
+*Workaround*: Open a relevant =~/basic-memory/= file in a nearby Doom
+buffer. Copilot reads your open buffers as local context for completions.
+This is manual but effective for files you're actively editing.
+
+* Bootstrap Export
+
+The old pandoc-based bulk bootstrap has been replaced by a targeted Emacs batch export.
+See =export-basic-memory-docs.ps1= in =scripts.org= (aliased to =bm-docs=).
+
+Currently exports only:
+- =~/Documents/org/notes/personal/20260507T203221--note-taking-workflow__personal_pkm_reference.org=
+  ? =~/basic-memory/bootstrap/note-taking-workflow.md=
+
+The source org note carries an =#+EXPORT_FILE_NAME:= header that points to the target path.
+
+Use:
+: bm-docs
+
+** CLI search (no server required)
+
+Use the venv Python directly (the =~/.local/bin/basic-memory.exe= trampoline
+works in interactive shells but avoid it in scripts):
+
+#+begin_src powershell :tangle no
+# Via venv Python (reliable everywhere � preferred in scripts)
+$python = "$env:APPDATA\uv\tools\basic-memory\Scripts\python.exe"
+& $python -c "from basic_memory.cli.main import app; app(standalone_mode=False)" search "kanata home row mods"
+
+# Via trampoline (interactive shell only � do NOT use in scripts or startup)
+basic-memory search "kanata home row mods"
+#+end_src
+
+** Browsing and editing memory
+
+Open =~/basic-memory/= in Doom via =SPC f f=, or in File Explorer. The
+running server's filewatcher picks up edits and re-indexes automatically.
+
+** Memory hygiene
+
+Monthly: open =~/basic-memory/= in Doom dired, delete stale notes with =d x=. Deletion is permanent.
+
+** Relationship to Denote PKM
+
+These two systems coexist and serve different purposes:
+
+| System       | Location                      | Purpose                          | Version control |
+|--------------+-------------------------------+----------------------------------+-----------------|
+| Denote PKM   | =~/Documents/org/notes/= (keyword subfolders) | Authored, curated human notes    | Private git repo (=namefailed/notes=) |
+| Basic Memory | =~/basic-memory/=             | AI-accreted runtime memory       | Git repo (=namefailed/basic-memory=) |
+
+Do not symlink the directories. Use Basic Memory for durable AI-session
+facts; use Denote for knowledge you write and maintain yourself.
+
+** Standard prompt addendum
+
+Add this line to each agent's system prompt or custom instructions where
+supported:
+
+#+begin_quote
+Before answering, call =search_notes= for relevant context. After learning
+durable new facts about my setup or preferences, call =write_note= so other
+agents benefit.
+#+end_quote
+
+** Verification checklist
+
+#+begin_src powershell :tangle no
+# 1. Server reachable
+netstat -an | findstr 8765
+
+# 2. Startup entry present (common + per-user)
+Get-ChildItem "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\" -ErrorAction SilentlyContinue | Select-Object Name
+Get-ChildItem "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\" -ErrorAction SilentlyContinue | Select-Object Name
+
+# 3. Bootstrap landed
+& "$env:APPDATA\uv\tools\basic-memory\Scripts\python.exe" `
+    -c "from basic_memory.cli.main import app; app(standalone_mode=False)" `
+    search "kanata"
+
+# 4. Originals untouched
+(Get-Item ~/Documents/org/notes/tools/20260509T040000--kanata__tools_reference.org).Extension
+# Must be: .org
+
+# 5. Cross-client round-trip
+# a. In Claude Code: "Remember that I prefer pnpm over npm for new JS projects."
+# b. In Cursor (fresh chat): "What JS package manager do I prefer?"
+#    ? Should call search_notes and return pnpm
+# c. Repeat in Windsurf and VS Code Copilot Chat
+
+# 6. Memory file on disk
+Select-String -Path ~/basic-memory/**/*.md -Pattern "pnpm"
+#+end_src
+* Handoff: Architecture Migration (Windows Terminal -> WezTerm)
+
+** The Migration
+On May 28, 2026, the entire terminal architecture was migrated from Windows Terminal (UWP) to WezTerm (Win32). This was done to solve an inescapable race condition between Komorebi (which hooks window creation instantly) and Windows Terminal (which takes ~500ms to set its window title based on its profile).
+
+** How the Quake Terminal Works Now
+The user wants a Quake-style drop-down terminal (managed by WTQ) that floats and is ignored by Komorebi, while ALL other normal terminal instances are properly managed and automatically tiled on the "ops" workspace.
+
+Because WezTerm is a native Win32 app, it allows us to set the Window Class at launch via command line arguments. WTQ is configured to launch WezTerm with the --class QuakeTerm argument.
+When the window is spawned, its class is instantly QuakeTerm. Komorebi's ignore_rules natively match this class on millisecond zero, preventing it from ever being tiled or flashing.
+Normal WezTerm instances do not have this class, so they are properly tiled.
+
+** Important Constraints
+- *Do not* use Windows Terminal. It is officially deprecated in this environment.
+- Any future terminal integrations or keybinds must be applied to ~/.config/wezterm/wezterm.org.
+- The WTQ hotkey issue must be investigated. Why does WTQ fail to attach or spawn when "WindowTitle": "^Quake$" is present, even though the OS window eventually gets named ""Quake""?

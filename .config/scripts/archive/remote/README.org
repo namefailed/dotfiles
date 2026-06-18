@@ -1,0 +1,18 @@
+#+title:      Archived remote setup scripts
+#+date:       [2026-05-20 Tue]
+
+One-shot installers superseded by manual =winget= / Windows setup. Machines are
+already configured; =startup-orchestrator.vbs= assumes Tailscale is installed.
+
+| Script | Was for |
+|--------+---------|
+| =enable-ssh.ps1= | OpenSSH Server + firewall |
+| =setup-ssh-keys.ps1= | Local Ed25519 key + =authorized_keys= |
+| =install-tailscale.ps1= | =winget install Tailscale.Tailscale= |
+| =setup-remote-access.ps1= | Older combined SSH + Tailscale script |
+
+**Active** remote scripts: [[file:../../../powershell/remote/][powershell/remote/]] (=ttyd-toggle.ps1=, =enable-ttyd-firewall.ps1=).
+
+**Archived utility scripts:** [[file:../utility/README.org][utility/README.org]].
+
+Literate sources: [[file:../../../scripts.org][scripts.org]] (=Archived remote setup=, =Archived utility scripts=).

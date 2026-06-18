@@ -1,0 +1,21 @@
+#+title:      WezTerm
+#+filetags:   :config:
+
+Primary terminal emulator (replaced Windows Terminal May 2026).
+
+* Files
+
+- [[file:wezterm.org][wezterm.org]] — Literate source; =tangle wezterm= → =wezterm.lua=
+- =wezterm.lua= — Generated runtime config (do not edit directly)
+
+* Keybindings (clipboard)
+
+- =Ctrl+C= — Copy selection to clipboard
+- =Ctrl+Shift+C= — Send SIGINT (cancel running command)
+- =Ctrl+Shift+V= — Paste
+
+* PKM (Documents/org)
+
+- Cheatsheet: [[file:../../../../Documents/org/notes/personal/20260508T030000--windows-terminal--cheatsheet__personal_reference.org][WezTerm Cheatsheet]] (=20260508T030000=)
+- Deprecated WT note: [[file:../../../../Documents/org/notes/tools/20260509T041200--windows-terminal__tools_reference.org][Windows Terminal (historical)]]
+- Hub: [[file:../../../../Documents/org/notes/pkm/20260509T150000--moc-tools__pkm_reference.org][MOC — Tools]]

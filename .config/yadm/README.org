@@ -1,0 +1,91 @@
+#+title:      Dotfiles (yadm)
+#+date:       [2026-05-15 Thu]
+#+filetags:   :yadm:dotfiles:windows:
+
+* Purpose
+
+[[https://yadm.io/][yadm]] versions dotfiles with normal Git, while keeping the work tree at =~/= so paths
+stay where Windows and your tools expect them. This folder (=~/.config/yadm/=) only
+holds *yadm-specific* helpers; the repo-wide policy lives in =~/.gitignore= at the
+home root.
+
+See also the top-level map: [[file:../README.org][~/.config/README.org]].
+
+* Documentation (upstream)
+
+- [[https://yadm.io/docs/getting-started][Getting started]]
+- [[https://yadm.io/docs/bootstrap][Bootstrap]]
+- [[https://yadm.io/docs/alternates][Alternate files]] (=##os=, =##hostname=, …)
+- [[https://yadm.io/docs/encryption][Encryption]] (=yadm encrypt= / =yadm decrypt=)
+- [[https://yadm.io/docs/templates][Templates]] (=##default=, =##yadm.template=)
+
+* How this fits literate config
+
+- *Edit surface*: keep changing =*.org= under =~/.config/= and tangling (see
+  [[file:../README.org::*Tangling][~/.config/README.org → Tangling]]).
+- *History / sync*: use =yadm add= / =yadm commit= / =yadm push= for anything the
+  root =~/.gitignore= whitelists (today: mostly =~/.config/**= plus =~/.gitconfig=).
+  The Doom *core* checkout at =~/.config/emacs/= is **not** in yadm (nested upstream
+  Git repo); clone it in =bootstrap= or reinstall Doom the usual way — your layer stays in =~/.config/doom/=.
+- *New machine*: =yadm clone <url>= then =yadm bootstrap= (runs =~/.config/yadm/bootstrap=).
+
+* Installed layout (this machine)
+
+| Path | Role |
+|------+------|
+| =~/bin/yadm= | Upstream yadm bash script (currently 3.5.0) |
+| =~/bin/yadm.cmd= | Invokes yadm via Git Bash (=C:/Program Files/Git/bin/bash.exe=) |
+| =~/.local/share/yadm/repo.git/= | Bare-style Git directory (not checked into itself) |
+| =~/.gitignore= | Deny-by-default; =!= lines whitelist paths under =~/= (entire =~/.config/emacs/= is excluded: nested Doom upstream repo — reinstall on new machines) |
+| =~/.config/yadm/bootstrap= | Post-clone setup hook (edit for winget installs, etc.) |
+| =~/.ssh/config= | =Host github.com= uses =~/.ssh/id_ed25519_github= (no passphrase) so Git works without =ssh-agent= |
+| =~/.ssh/id_ed25519_github= | Passphrase-less key registered on GitHub for this PC |
+| =~/.ssh/id_ed25519= | Older bcrypt-encrypted key (same pubkey as key =grey_lenovo= on GitHub) — use only with =ssh-agent= + =ssh-add= if you need it |
+
+After changing =PATH=, open a *new* terminal so =yadm= resolves to =~/bin/yadm.cmd=.
+
+* Tool comparison (same problem space)
+
+| Tool | Best for | Windows notes |
+|------+----------+---------------|
+| [[https://yadm.io/][yadm]] | Git-native flow, alternates, encrypt hooks | No winget package; use Git Bash + =~/bin/yadm= |
+| [[https://chezmoi.io/][chezmoi]] | Templates, =apply= / =diff=, secrets (age) | =winget install twpayne.chezmoi= |
+| Bare repo + alias | Minimal dependency | Same Git ideas as yadm; you hand-roll commands |
+| [[https://github.com/Shemnei/punktf][punktf]], [[https://github.com/RaphGL/tuckr][tuckr]], Winstow | Declarative / TOML layouts | Smaller ecosystems; several appear in winget |
+
+* Operator checklist
+
+1. =yadm version= — sanity check after shell restart.
+2. Review / extend =~/.gitignore= (whitelist =!= lines for extra top-level dotfiles).
+3. =yadm status= — expect many untracked paths until ignores match your intent; prefer =yadm add -p= over blind =yadm add -A=.
+4. =yadm remote add origin <url>= when you have a private host (GitHub, etc.).
+5. =yadm commit= and =yadm push= when satisfied (hooks and signing follow your global Git config).
+
+* Clone on a fresh system
+
+#+begin_example
+yadm clone https://github.com/<you>/dotfiles.git
+yadm bootstrap    # runs ~/.config/yadm/bootstrap
+#+end_example
+
+* Bootstrap
+
+=yadm bootstrap= executes =~/.config/yadm/bootstrap= (bash). Edit that script for
+non-interactive installs (=winget=, =uv=, Emacs build deps, etc.) on new hardware.
+
+* Related Repositories
+
+| Repository | Tool | Scope | Remote |
+|------------+------+-------+--------|
+| =namefailed/dotfiles= | yadm | Dotfiles under =~/= | =git@github.com:namefailed/dotfiles.git= |
+| =namefailed/notes= | git | =~/Documents/org/= | =git@github.com:namefailed/notes.git= |
+| =namefailed/basic-memory= | git | =~/basic-memory/= | =git@github.com:namefailed/basic-memory.git= |
+
+The notes repo is separate from dotfiles: it is a standard Git repo (not YADM)
+because the work tree is a single directory. It contains the Org/Denote/Howm
+library, journal, tasks, and inbox.
+
+* PKM (Documents/org)
+
+- Denote: [[file:../../../../Documents/org/notes/tools/20260514T032500--windows-dotfiles__tools_reference.org][Windows Dotfiles]] (=20260514T032500=)
+- Portability: [[file:../../../../Documents/org/notes/tools/20260519T120000--config-portability-and-path-conventions__tools_reference.org][Config Portability]]

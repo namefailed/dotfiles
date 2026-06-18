@@ -1,0 +1,21 @@
+#+title:      WTQ Quake Terminal
+#+date:       [2026-05-13 Tue]
+#+filetags:   :config:readme:
+
+WTQ provides a Quake-style drop-down terminal via WezTerm.
+
+** Configuration
+
+Edit =wtq.org=, then tangle with =tangle wtq=.
+
+** Key features
+
+- =Win + `= toggles the WezTerm quake terminal
+- Komorebi ignores =QuakeTerm= class so the terminal floats above tiled windows
+- =toggle-komorebi-bar.ps1= updates =VerticalOffset= when the bar is toggled
+
+** Howm Scratch
+
+The =Howm Scratch= WTQ app entry was removed in Phase 1 cleanup (2026-06-16).
+The =launch-howm.vbs= script and =wtq-howm-launcher.ps1= were also deleted.
+Only the WezTerm quake remains.

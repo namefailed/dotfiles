@@ -1,0 +1,96 @@
+#+title:      Himalaya
+#+date:       [2026-05-20 Wed]
+#+filetags:   :config:email:himalaya:
+#+PROPERTY:   header-args:toml :tangle ~/.config/himalaya/config.toml :mkdirp yes
+
+#+begin_quote
+⚠ *DO NOT EDIT =config.toml= DIRECTLY.*
+
+This =himalaya.org= file is the source of truth. Edit here, then tangle with
+=tangle himalaya= (or =M-x org-babel-tangle=) to deploy.
+#+end_quote
+
+* Overview
+
+Himalaya — CLI email client used by Hermes Agent to read, search, and manage
+email via the built-in =himalaya= skill.
+
+| Key | Value |
+|-----+-------|
+| Binary | =~/.config/himalaya/bin/himalaya.exe= |
+| Config | =~/.config/himalaya/config.toml= |
+| Backend | IMAP (read) + SMTP (send) |
+
+* Configuration
+
+The following block tangles to =~/.config/himalaya/config.toml=.
+
+Config is gitignored (=.gitignore= excludes =config.toml=). Password stored in
+Windows Credential Manager, retrieved at runtime by =get-pass.ps1= (see
+[[file:~/.config/scripts/scripts.org][scripts.org]]).
+
+#+begin_src toml
+[accounts.gmail]
+default = true
+email = "***"
+display-name = "Matt Grey"
+signature = ""
+
+folder.aliases.inbox = "INBOX"
+envelope.list.page-size = 20
+
+# IMAP (read)
+backend.type = "imap"
+backend.host = "imap.gmail.com"
+backend.port = 993
+backend.encryption.type = "tls"
+backend.login = "***"
+backend.auth.type = "password"
+backend.auth.cmd = "powershell.exe -NoProfile -Command \". (Join-Path $env:USERPROFILE '.config/scripts/_lib/config-paths.ps1'); & (Join-Path $ConfigScriptsRoot 'himalaya/get-pass.ps1')\""
+
+# SMTP (send)
+[accounts.gmail.message.send]
+backend.type = "smtp"
+backend.host = "smtp.gmail.com"
+backend.port = 587
+backend.encryption.type = "start-tls"
+backend.login = "***"
+backend.auth.type = "password"
+backend.auth.cmd = "powershell.exe -NoProfile -Command \". (Join-Path $env:USERPROFILE '.config/scripts/_lib/config-paths.ps1'); & (Join-Path $ConfigScriptsRoot 'himalaya/get-pass.ps1')\""
+#+end_src
+
+* Overview & Architecture
+
+Himalaya is a CLI email client.
+
+**Why Himalaya?**
+By moving email out of heavy web clients and into a CLI tool, email processing becomes instantly accessible via standard terminal multiplexing. It fits perfectly into the keyboard-driven, ADHD-optimized philosophy by removing visual distractions inherent to web-based email.
+
+* Credential Management
+
+Password stored in Windows Credential Manager via =PasswordVault=, not on
+disk. Two helper scripts in =~/.config/scripts/himalaya/=:
+
+- =get-pass.ps1= — Retrieved by himalaya's =backend.auth.cmd= at connect time.
+- =set-pass.ps1= — One-shot setup: =set-pass.ps1 "your-app-password"=
+
+Source: [[file:~/.config/scripts/scripts.org][scripts.org]] (look for =* Himalaya=).
+
+* Quick Reference
+
+| Command | Effect |
+|---------+--------|
+| =himalaya envelope list -f INBOX -s 10= | Last 10 inbox messages |
+| =himalaya envelope search "query"= | Search email |
+| =himalaya message read <id>= | Read a message |
+| =himalaya message send= | Compose and send |
+
+* Integration with Hermes
+
+Hermes uses the =himalaya= skill (built-in) to check email. Send
+"check my email" on Telegram and Hermes will use himalaya to fetch,
+summarize, and advise.
+
+* Related
+
+- [[file:~/.config/hermes/hermes.org][Hermes Agent Config]]
