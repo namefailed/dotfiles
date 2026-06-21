@@ -437,7 +437,7 @@
 )
 
 (deflayer nomods
-  esc caps a s d f ; h j k l u y p w b g 4 0 c x grv 1 2
+  esc @cap a s d f ; h j k l u y p w b g 4 0 c x grv 1 2
   lalt lsft
   t q m i r
   [ ]

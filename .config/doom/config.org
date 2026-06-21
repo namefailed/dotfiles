@@ -433,7 +433,7 @@ once per day — safe to call from s, S, yl, yt, etc.
 Each carried task gets (YYYY-MM-DD) appended for provenance.
 The original stays in yesterday unchanged."
   (let* ((today (calendar-current-date))
-         (yesterday (calendar-date-gregorian-from-absolute
+         (yesterday (calendar-gregorian-from-absolute
                      (1- (calendar-absolute-from-gregorian today))))
          (yesterday-link (format-time-string "[%Y-%m-%d]"
                           (apply #'encode-time 0 0 0 0

@@ -10,7 +10,8 @@ set update.nag true
 set update.nagwait 7
 set update.checkintervalsecs 86400
 set configversion 2.0
-set theme midnight
+set customthemes.mocha-catppuccin :root{--ctp-base:#1e1e2e;--ctp-mantle:#181825;--ctp-crust:#11111b;--ctp-surface0:#313244;--ctp-surface1:#45475a;--ctp-surface2:#585b70;--ctp-overlay0:#6c7086;--ctp-overlay1:#7f849c;--ctp-subtext0:#a6adc8;--ctp-subtext1:#bac2de;--ctp-text:#cdd6f4;--ctp-pink:#f5c2e7;--ctp-mauve:#cba6f7;--ctp-red:#f38ba8;--ctp-peach:#fab387;--ctp-yellow:#f9e2af;--ctp-green:#a6e3a1;--ctp-teal:#94e2d5;--ctp-blue:#89b4fa;--ctp-sky:#89dceb;--ctp-lavender:#b4befe;--tridactyl-fg:var(--ctp-text);--tridactyl-bg:var(--ctp-base);--tridactyl-url-fg:var(--ctp-pink);--tridactyl-url-bg:var(--ctp-base);--tridactyl-highlight-box-bg:var(--ctp-surface0);--tridactyl-highlight-box-fg:var(--ctp-text);--tridactyl-of-fg:var(--ctp-text);--tridactyl-of-bg:var(--ctp-surface0);--tridactyl-cmdl-fg:var(--ctp-text);--tridactyl-cmdl-bg:var(--ctp-surface0);--tridactyl-cmdl-font-family:monospace;--tridactyl-cmplt-fg:var(--ctp-text);--tridactyl-cmplt-bg:var(--ctp-mantle);--tridactyl-cmplt-font-family:monospace;--tridactyl-hintspan-font-family:monospace;--tridactyl-hintspan-fg:var(--ctp-pink);--tridactyl-hintspan-bg:var(--ctp-surface0);--tridactyl-hint-active-fg:none;--tridactyl-hint-active-bg:none;--tridactyl-hint-active-outline:none;--tridactyl-hint-bg:none;--tridactyl-hint-outline:none;--tridactyl-font-size:15px} .TridactylHintElem{outline:1px solid rgba(203,166,247,0.25)!important} span.TridactylHint,span.TridactylHintUppercase{font-size:15px!important;border:1.5px solid #f5c2e7!important;border-radius:3px!important;padding:1px 3px!important} #tridactyl-input,.TridactylCmplt{font-size:15px!important}
+set theme mocha-catppuccin
 set smoothscroll false
 set smoothscrollpixels true
 set hintuppercase true
@@ -26,14 +27,8 @@ set leavegithubalone true
 set scrollduration 100
 set hintautoselect true
 set searchengine completions none
-set hintstyles.fg none
-set hintstyles.bg none
-set hintstyles.outline none
-set hintstyles.overlay none
-set hintstyles.overlayoutline none
 
-" Unbind Defaults
-unbind t
+" No unbinds — all defaults either kept or overridden by custom binds below
 
 " Navigation and tabs
 bind d scrollpage 0.25
@@ -54,30 +49,31 @@ bind g^ tabfirst
 bind g0 tabfirst
 bind g$ tablast
 bind ga tabaudio
-bind gr reader
 bind gf viewsource
-bind T fillcmdline tabopen
-bind td tabduplicate
-bind tn tabnew
-bind tw tabdetach
+bind t tabnew
+bind T tabduplicate
+bind O fillcmdline tabopen
+bind W tabdetach
 bind N current_url tabopen
-bind O current_url open
+bind gr js var d=document.documentElement;if(d.style.filter){d.style.filter=""}else{d.style.filter="invert(1) hue-rotate(180deg)"}
+bind gR reader
 
 " Scrolling
 bind h scrollpx -50
 bind l scrollpx 50
 bind $ scrollto 100 x
 bind ^ scrollto 0 x
-bind <C-j> scrollline 10
-bind <C-k> scrollline -10
+bind <C-j> scrollpage 1
+bind <C-k> scrollpage -1
 
 bind <C-6> buffer #
 bind <A-p> pin
 bind <A-m> mute toggle
 bind <F1> help
+bind ? help
 bind o fillcmdline open
 bind w fillcmdline winopen
-bind W current_url winopen
+
 bind ]] followpage next
 bind [[ followpage prev
 bind [c urlincrement -1
@@ -86,7 +82,7 @@ bind <C-x> urlincrement -1
 bind <C-a> urlincrement 1
 bind gh home
 bind gH home true
-bind p nmode ignore 1 mode normal
+bind p clipboard open
 bind P clipboard tabopen
 bind j scrollline 10
 bind <C-e> scrollline 10
@@ -114,11 +110,27 @@ bind gU urlroot
 bind : fillcmdline_notrail
 bind s fillcmdline open search
 bind S fillcmdline tabopen search
-bind M gobble 1 quickmark
+bind M current_url bmark
 bind B fillcmdline taball
 bind b fillcmdline tab
 
-" Hints and selection
+" Hint styling (Catppuccin pink theme)
+set hintuppercase true
+set hintchars asdfghjkl
+set hintfiltermode vimperator-reflow
+set hintdelay 50
+set hintshift true
+set modeindicatorshowkeys true
+set jumpdelay 1500
+set leavegithubalone true
+set scrollduration 100
+set hintautoselect true
+set hintstyles.fg none
+set hintstyles.bg none
+set hintstyles.outline none
+set hintstyles.overlay none
+set hintstyles.overlayoutline none
+
 bind f hint
 bind F hint -b
 bind gF hint -qb

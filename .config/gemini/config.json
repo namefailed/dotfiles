@@ -19,7 +19,8 @@
         "mcp(basic-memory/read_note)",
         "mcp(basic-memory/list_memory_projects)",
         "mcp(basic-memory/list_directory)",
-        "read_url(raw.githubusercontent.com)"
+        "read_url(raw.githubusercontent.com)",
+        "read_url(github.com)"
       ]
     }
   }

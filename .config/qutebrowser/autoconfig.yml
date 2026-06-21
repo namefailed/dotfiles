@@ -13,7 +13,7 @@ settings:
   colors.webpage.darkmode.contrast:
     global: 0.0
   colors.webpage.darkmode.enabled:
-    global: false
+    global: true
   colors.webpage.darkmode.policy.images:
     global: smart
   colors.webpage.darkmode.threshold.foreground:

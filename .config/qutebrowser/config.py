@@ -239,6 +239,7 @@ config.bind("x", "tab-close")
 config.bind("X", "undo")
 config.bind("t", "open -t")                    # blank new tab
 config.bind("T", "tab-clone")                  # duplicate tab
+config.bind("W", "tab-detach")                 # detach tab to new window
 config.bind("gx0", "tab-close -o")     # close other tabs
 config.bind("gx$", "tab-close -r")     # close right tabs
 config.bind("<", "tab-move -")        # move tab left

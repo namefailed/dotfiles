@@ -36,7 +36,7 @@ a few site-specific overrides.
 - =H= / =L= -- previous / next tab
 - =o= / =w= / =b= / =B= / =:= -- open, window-open, tab switch, tab-all, and ex prompt entry
 - =T= -- open the tab-open command line
-- =td= / =tn= / =tw= -- duplicate / new / detach tab
+- =td= / =t= / =tn= / =W= -- duplicate / new / new alias / detach tab
 - =N= / =O= -- reopen current URL in a new tab or current tab
 
 * Hint Actions

@@ -735,7 +735,7 @@ tick via the =to-default= fake key.
 
 #+begin_src conf
 (deflayer nomods
-  esc caps a s d f ; h j k l u y p w b g 4 0 c x grv 1 2
+  esc @cap a s d f ; h j k l u y p w b g 4 0 c x grv 1 2
   lalt lsft
   t q m i r
   [ ]
@@ -1695,7 +1695,7 @@ Small external keyboard (no CapsLock key). Mirrors the main profile with these s
 
 #+begin_src conf
 (deflayer nomods
-  grv caps a s d f ; h j k l u y p w b g 4 0 c x grv 1 2
+  grv @cap a s d f ; h j k l u y p w b g 4 0 c x grv 1 2
   lalt lsft
   t q m i r
   [ ]

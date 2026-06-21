@@ -43,6 +43,9 @@ kiro/sessions/
 # Installed PowerShell modules (reinstall via Install-Module, not user config)
 powershell/Modules/
 
+# Personal info (gitignored to prevent PII leaks)
+espanso/match/personal.yml
+
 # Binary shortcut files (embed absolute paths)
 *.lnk
 *.bak
