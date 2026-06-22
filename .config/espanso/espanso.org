@@ -219,6 +219,15 @@ matches:
   - trigger: ":star"
     replace: "★"
     label: Insert star
+
+  # ------------------------------------------------------------------
+  # COMMON CORRECTIONS
+  # ------------------------------------------------------------------
+
+  - trigger: "alot"
+    replace: "a lot"
+    label: Correct "alot" to "a lot"
+    word: true
 #+end_src
 
 * Code Fences (Org Blocks)

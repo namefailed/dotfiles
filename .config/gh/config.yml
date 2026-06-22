@@ -1,3 +1,2 @@
 # GitHub CLI configuration (XDG: ~/.config/gh/config.yml)
 git_protocol: ssh
-version: "1"
