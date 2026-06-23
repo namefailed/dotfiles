@@ -142,9 +142,7 @@ GTD =@context= tags (=@computer=, =@calls=, =@errands=, =@home=, =@homelab=,
 
 #+begin_src emacs-lisp
 (setq org-directory "~/Documents/org/"
-      org-agenda-files (list (expand-file-name "tasks.org"    org-directory)
-                             (expand-file-name "notes.org"    org-directory)
-                             (expand-file-name "journal.org"  org-directory))
+      org-agenda-files (list (expand-file-name "journal.org"  org-directory))
 
       org-default-notes-file (expand-file-name "journal.org" org-directory)
       org-log-done               'time
@@ -177,11 +175,7 @@ file name so identical headings in different files are unambiguous. Setting
 path in one step rather than drilling down interactively.
 
 #+begin_src emacs-lisp
-(setq org-refile-targets
-      `((,(expand-file-name "tasks.org"    org-directory) :maxlevel . 2)
-        (,(expand-file-name "notes.org"    org-directory) :maxlevel . 2))
-      org-refile-use-outline-path        'file
-      org-outline-path-complete-in-steps  nil)
+(setq org-refile-targets nil)
 #+end_src
 
 ** Capture Templates
@@ -984,9 +978,10 @@ system — =j= opens today's journal directly, =d= opens the daily review
        :desc "Org agenda"              "a" #'org-agenda
        :desc "Org capture"             "c" #'org-capture
        :desc "EOD process"             "e" #'my/org-journal-process-eod
-       :desc "Promote to tasks.org"    "p" #'my/org-journal-promote-line-or-region
-       :desc "Open tasks.org"          "t" (cmd! (find-file (expand-file-name "tasks.org" org-directory)))
-       :desc "Open notes.org"          "n" (cmd! (find-file (expand-file-name "notes.org" org-directory)))
+       :desc "Cycle TODO state"        "t" #'org-todo
+       :desc "Mark NEXT"               "n" (cmd! (org-todo "NEXT"))
+       :desc "Mark DONE"               "D" (cmd! (org-todo "DONE"))
+       :desc "Set deadline"            "p" #'org-deadline
        :desc "Find/create note"        "f" #'denote-open-or-create
        :desc "Link to note"            "l" #'denote-link
        :desc "Backlinks"               "b" #'denote-backlinks

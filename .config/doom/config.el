@@ -53,9 +53,7 @@
 
 ;; [[file:config.org::*Core Settings][Core Settings:1]]
 (setq org-directory "~/Documents/org/"
-      org-agenda-files (list (expand-file-name "tasks.org"    org-directory)
-                             (expand-file-name "notes.org"    org-directory)
-                             (expand-file-name "journal.org"  org-directory))
+      org-agenda-files (list (expand-file-name "journal.org"  org-directory))
 
       org-default-notes-file (expand-file-name "journal.org" org-directory)
       org-log-done               'time
@@ -80,11 +78,7 @@
 ;; Core Settings:1 ends here
 
 ;; [[file:config.org::*Refile][Refile:1]]
-(setq org-refile-targets
-      `((,(expand-file-name "tasks.org"    org-directory) :maxlevel . 2)
-        (,(expand-file-name "notes.org"    org-directory) :maxlevel . 2))
-      org-refile-use-outline-path        'file
-      org-outline-path-complete-in-steps  nil)
+(setq org-refile-targets nil)
 ;; Refile:1 ends here
 
 ;; [[file:config.org::*Capture Templates][Capture Templates:1]]
@@ -829,9 +823,9 @@ before invoking this, otherwise Windows will silently block the focus steal."
        :desc "Org agenda"              "a" #'org-agenda
        :desc "Org capture"             "c" #'org-capture
        :desc "EOD process"             "e" #'my/org-journal-process-eod
-       :desc "Promote to tasks.org"    "p" #'my/org-journal-promote-line-or-region
-       :desc "Open tasks.org"          "t" (cmd! (find-file (expand-file-name "tasks.org" org-directory)))
-       :desc "Open notes.org"          "n" (cmd! (find-file (expand-file-name "notes.org" org-directory)))
+       :desc "Cycle TODO state"        "t" #'org-todo
+       :desc "Mark NEXT"               "n" (cmd! (org-todo "NEXT"))
+       :desc "Mark DONE"               "D" (cmd! (org-todo "DONE"))
        :desc "Find/create note"        "f" #'denote-open-or-create
        :desc "Link to note"            "l" #'denote-link
        :desc "Backlinks"               "b" #'denote-backlinks
@@ -1186,6 +1180,9 @@ Designed for non-interactive call from emacsclient --eval
 ;; Explore:1 ends here
 
 ;; [[file:config.org::*Windows][Windows:1]]
+(map! :map org-mode-map
+      :n "T" #'org-todo)
+
 (map! :n "C-h" #'evil-window-left
       :n "C-j" #'evil-window-down
       :n "C-k" #'evil-window-up
