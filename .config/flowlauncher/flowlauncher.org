@@ -32,21 +32,17 @@ opening the generated file that edits belong in the =.org= source.
   ],
 #+end_src
 
-* Overview & Architecture
-
-Flow Launcher is the keyboard-first application and workflow launcher.
-
-*** Why Flow Launcher?
-The native Windows Start Menu is bloated with web searches and advertisements. Flow Launcher provides a clean, instantaneous, keyboard-driven interface. Backed by the Everything search engine, it guarantees immediate access to any file, app, or system command without taking your hands off the keyboard.
-
-# FIXME: This "* Overview" section appears redundant with "* Overview & Architecture"
-# above. Consider merging or removing.
 * Overview
 
 Flow Launcher is the keyboard-first launcher surface for the Windows desktop.
 This file defines the core window behavior, custom explorers and browsers, and
 the plugin keywords that make the launcher feel like part of the rest of the
 tooling stack rather than a separate app.
+
+The native Windows Start Menu is bloated with web searches and advertisements.
+Flow Launcher provides a clean, instantaneous, keyboard-driven interface. Backed
+by the Everything search engine, it guarantees immediate access to any file, app,
+or system command without taking your hands off the keyboard.
 
 * General Settings
 
@@ -524,10 +520,9 @@ Global hotkeys with wildcard keyword.
 
 ** Win Hotkey Runtime Settings
 
-# FIXME: "InterrModifier" (line below) looks like a typo for
-# "InterruptModifier". Confirm against plugin docs.
 The Win Hotkey plugin keeps its own settings file under the Flow Launcher plugin
-directory. Keep the interrupt timeout at =100=.
+directory. Keep the interrupt timeout at =100=. (=InterrModifier= is the plugin's
+own field name, not a typo.)
 
 #+begin_src json :tangle no :noweb no
 # Plugin Settings.json were here; machine-local — edit in Flow Launcher UI. Was: settings/Plugins/Flow.Launcher.Plugin.WinHotkey/Settings.json :mkdirp yes

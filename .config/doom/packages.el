@@ -39,3 +39,5 @@
   :recipe (:host github :repo "yuya373/claude-code-emacs"))
 
 (package! lsp-ltex)
+
+(package! minimap)

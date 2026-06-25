@@ -231,3 +231,11 @@ grammar/spell checking in text, org, markdown, and latex buffers.
 #+begin_src emacs-lisp :tangle packages.el
 (package! lsp-ltex)
 #+end_src
+
+** Minimap
+
+Buffer overview sidebar, toggled via =SPC T m=.
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! minimap)
+#+end_src

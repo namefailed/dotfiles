@@ -13,5 +13,16 @@
     helper = !'C:\\Program Files\\GitHub CLI\\gh.exe' auth git-credential
 
 [user]
-    email = ***@***.***  # FIXME: insert your Git email
+    email = namefailedx@gmail.com
     name = grey
+
+[core]
+    pager = delta
+
+[delta]
+    navigate     = true
+    line-numbers = true
+    side-by-side = true
+
+[interactive]
+    diffFilter = delta --color-only

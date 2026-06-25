@@ -547,57 +547,6 @@ Called from phoneme-denote.ps1 via emacsclient --eval."
                     "::" head)
             (replace-regexp-in-string "^\\*+ +" "" head))))
 
-(defun my/org-append-promoted-task (file heading-re title link-line)
-  "Insert a new TODO heading under HEADING-RE in FILE with TITLE and LINK-LINE."
-  (let ((path (expand-file-name file org-directory)))
-    (with-current-buffer (find-file-noselect path)
-      (org-with-wide-buffer
-        (goto-char (point-min))
-        (unless (re-search-forward heading-re nil t)
-          (user-error "Could not find heading matching %s in %s" heading-re path))
-        (let ((sub-end (save-excursion
-                         (goto-char (match-beginning 0))
-                         (org-end-of-subtree t t)
-                         (point))))
-          (goto-char sub-end)
-          (insert (format "\n** TODO %s\n%s\n" title link-line)))))))
-
-(defun my/org-journal-promote-line-or-region ()
-  "Promote journal line/region to a real `** TODO' heading in tasks.org.
-The sorting step in the journal-first workflow — capture in journal, then
-promote here with a backlink to today's entry."
-  (interactive)
-  (unless (and buffer-file-name
-               (file-equal-p (expand-file-name buffer-file-name)
-                             (expand-file-name my/org-journal-file)))
-    (user-error "Promote only works in journal.org"))
-  (let* ((bounds (if (use-region-p)
-                     (cons (region-beginning) (region-end))
-                   (cons (line-beginning-position) (line-end-position))))
-         (raw (buffer-substring-no-properties (car bounds) (cdr bounds)))
-         (title (my/org-journal--strip-plan-line-text
-                 (if (use-region-p)
-                     (replace-regexp-in-string "[\n\r]+" " " raw)
-                   raw)))
-         (dest "tasks.org")
-         (link (concat "From journal: " (my/org-journal--day-heading-link)))
-         (re "^\\* Inbox$"))
-    (when (string-blank-p title)
-      (user-error "Nothing to promote"))
-    (my/org-append-promoted-task dest re title link)
-    (save-excursion
-      (my/org-journal-ensure-log-target)
-      (end-of-line)
-      (newline)
-      (insert (format-time-string "- [%Y-%m-%d %a %H:%M] Promoted: ")
-              title " → " dest))
-    (message "Promoted %s to %s" title dest)))
-
-(defun my/org-quick-task-capture ()
-  "Open tasks.org (Win+T)."
-  (interactive)
-  (find-file (expand-file-name "tasks.org" org-directory)))
-
 (defun my/org-journal-insert-timestamp ()
   "Append a timestamped bullet entry to today's Log section."
   (interactive)
@@ -634,11 +583,6 @@ new tasks always land after existing ones."
                 (if (string-blank-p contents)
                     (progn
                       (setq my/eod-pending t)
-                      (select-frame-set-input-focus (selected-frame))
-                      (when (executable-find "powershell")
-                        (call-process "powershell" nil nil nil
-                          "-Command"
-                          "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.MessageBox]::Show('EOD is empty — wrap up your day!', '⚠ Journal Reminder', 'OK', 'Warning')"))
                       (ding t))
                   (setq my/eod-pending nil)))
             (setq my/eod-pending nil))
@@ -826,6 +770,7 @@ before invoking this, otherwise Windows will silently block the focus steal."
        :desc "Cycle TODO state"        "t" #'org-todo
        :desc "Mark NEXT"               "n" (cmd! (org-todo "NEXT"))
        :desc "Mark DONE"               "D" (cmd! (org-todo "DONE"))
+       :desc "Set deadline"            "p" #'org-deadline
        :desc "Find/create note"        "f" #'denote-open-or-create
        :desc "Link to note"            "l" #'denote-link
        :desc "Backlinks"               "b" #'denote-backlinks
@@ -1180,9 +1125,6 @@ Designed for non-interactive call from emacsclient --eval
 ;; Explore:1 ends here
 
 ;; [[file:config.org::*Windows][Windows:1]]
-(map! :map org-mode-map
-      :n "T" #'org-todo)
-
 (map! :n "C-h" #'evil-window-left
       :n "C-j" #'evil-window-down
       :n "C-k" #'evil-window-up
@@ -1255,7 +1197,8 @@ Designed for non-interactive call from emacsclient --eval
 ;; [[file:config.org::*Toggles][Toggles:1]]
 (map! :leader
       :desc "Toggle word wrap"        "T w" #'+word-wrap-mode
-      :desc "Toggle undecorated frame" "T u" #'my/toggle-undecorated-frame)
+      :desc "Toggle undecorated frame" "T u" #'my/toggle-undecorated-frame
+      :desc "Toggle minimap"          "T m" #'minimap-mode)
 ;; Toggles:1 ends here
 
 ;; [[file:config.org::*File Picker][File Picker:1]]
@@ -1353,6 +1296,15 @@ Designed for non-interactive call from emacsclient --eval
         "C-c C-c" #'embark-collect))
 ;; Search:1 ends here
 
+;; [[file:config.org::*Minimap][Minimap:1]]
+(use-package! minimap
+  :commands minimap-mode
+  :config
+  (setq minimap-window-location 'left
+        minimap-width-fraction 0.08
+        minimap-minimum-width 12))
+;; Minimap:1 ends here
+
 ;; [[file:config.org::*Treemacs][Treemacs:1]]
 (setq +treemacs-git-mode 'deferred)
 
@@ -1403,12 +1355,8 @@ Designed for non-interactive call from emacsclient --eval
         (set-frame-parameter nil 'undecorated new)
         (modify-all-frames-parameters `((undecorated . ,new)))
         (if new
-            (progn
-              (set-frame-parameter nil 'undecorated-round t)
-              (set-frame-parameter nil 'internal-border-width 14))
-          (progn
-            (set-frame-parameter nil 'undecorated-round nil)
-            (set-frame-parameter nil 'internal-border-width 0)))
+            (set-frame-parameter nil 'internal-border-width 14)
+          (set-frame-parameter nil 'internal-border-width 0))
         (message "Undecorated + Rounded Corners: %s" (if new "ON" "OFF")))
     (message "Undecorated frame toggle requires a GUI frame.")))
 ;; Frames:1 ends here

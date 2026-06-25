@@ -4,7 +4,7 @@
   "height": 32,
   "padding": 8,
   "widget_spacing": 10,
-  "transparency_alpha": 235,
+  "transparency_alpha": 120,
   "theme": {
     "palette": "Catppuccin",
     "name": "Mocha",
@@ -45,7 +45,7 @@
     },
     {
       "Storage": {
-        "enable": false,
+        "enable": true,
         "show_used": true,
         "show_total": false
       }

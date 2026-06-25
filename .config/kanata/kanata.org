@@ -7,32 +7,20 @@ Edit this file, then =tangle kanata= (post-processes paths for current user) or
 =M-x org-babel-tangle= then =tangle-configs.ps1 kanata=; restart Kanata.
 Never edit =kanata.kbd=, =kanata-plain.kbd=, or =external.kbd= directly.
 
-FIXME: The =#+RESULTS:= blocks below resolve =~= to the Windows username
-(=c:/Users/<user>/...=).  Add =:results silent= to the =#+BEGIN_SRC= blocks
-or use env vars to avoid leaking the username in a public repo.  Also, the
-=[[denote:...]]= links in [[*Related Notes]] require the author's local PKM
-database and won't resolve for anyone else.
-
 * Main Profile
 :PROPERTIES:
 :header-args:conf: :tangle kanata.kbd :noweb yes
 :END:
 
 #+NAME: config-scripts-fwd
-#+BEGIN_SRC emacs-lisp :exports results :results value replace
+#+BEGIN_SRC emacs-lisp :exports results :results silent
 (replace-regexp-in-string "\\\\" "/" (expand-file-name "~/.config/scripts"))
 #+END_SRC
 
-#+RESULTS: config-scripts-fwd
-: c:/Users/Namef/.config/scripts
-
 #+NAME: local-windowsapps-olk
-#+BEGIN_SRC emacs-lisp :exports results :results value replace
+#+BEGIN_SRC emacs-lisp :exports results :results silent
 (replace-regexp-in-string "\\\\" "/" (expand-file-name "~/AppData/Local/Microsoft/WindowsApps/olk.exe"))
 #+END_SRC
-
-#+RESULTS: local-windowsapps-olk
-: c:/Users/Namef/AppData/Local/Microsoft/WindowsApps/olk.exe
 
 ** Generated File Warning                                            :noexport:
 

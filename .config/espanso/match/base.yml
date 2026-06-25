@@ -117,9 +117,34 @@ matches:
     replace: "TODO "
     label: Insert Org TODO keyword
 
+  - trigger: ":todo"
+    replace: "***** TODO "
+    label: Insert Org 5th-level TODO heading
+
   - trigger: ":orglink"
     replace: "[[$|$]]"
     label: Insert Org link skeleton
+
+  # ------------------------------------------------------------------
+  # DEV UTILITIES
+  # ------------------------------------------------------------------
+
+  - trigger: ":uuid"
+    replace: "{{output}}"
+    label: Insert random UUID
+    vars:
+      - name: output
+        type: shell
+        params:
+          cmd: "powershell -NoProfile -Command \"[System.Guid]::NewGuid().ToString()\""
+
+  - trigger: ":dbg"
+    replace: "dbg!();"
+    label: Insert Rust dbg! macro
+
+  - trigger: ":console"
+    replace: "console.log();"
+    label: Insert JS console.log
 
   # ------------------------------------------------------------------
   # SYMBOLS

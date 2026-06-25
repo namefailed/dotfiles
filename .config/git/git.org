@@ -38,8 +38,26 @@ credential helper for the hosts that actually use it.
     helper = !'C:\\Program Files\\GitHub CLI\\gh.exe' auth git-credential
 
 [user]
-    email = ***@***.***  # FIXME: insert your Git email
+    email = namefailedx@gmail.com
     name = grey
+#+end_src
+
+* Delta Diff Viewer
+
+[[https://github.com/dandavison/delta][delta]] provides syntax-highlighted, line-numbered, side-by-side diffs
+as the default git pager. Already installed via winget.
+
+#+begin_src conf :tangle config
+[core]
+    pager = delta
+
+[delta]
+    navigate     = true
+    line-numbers = true
+    side-by-side = true
+
+[interactive]
+    diffFilter = delta --color-only
 #+end_src
 
 * Overview & Architecture

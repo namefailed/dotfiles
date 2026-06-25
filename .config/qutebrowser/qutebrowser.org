@@ -493,3 +493,4 @@ config.unbind("<Ctrl+v>")              # moved to C-z
 config.bind("gf", "view-source")       # view source (like tridactyl gf)
 #+end_src
 
+

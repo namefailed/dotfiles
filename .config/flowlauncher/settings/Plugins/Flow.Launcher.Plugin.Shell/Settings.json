@@ -11,7 +11,7 @@
     "komorebic start --whkd": 1,
     "emacs .": 1,
     "wtq": 1,
-    "komorebic stop": 2,
+    "komorebic stop": 3,
     "fkill emacs": 1
   }
 }

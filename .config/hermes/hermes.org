@@ -311,10 +311,14 @@ context_length_cache.yaml
   | =hermes cron list= | List scheduled jobs |
   | =hermes cron add ...= | Schedule a new job |
 
-** FIXME Self-Correction Note: The compression block must also be disabled to stop the 404 error.
+** Compression Notes
+
+Auxiliary compression uses Ollama (=qwen2.5-coder:1.5b=) at =http://localhost:11434/v1=.
+If Ollama is not running, Hermes will log 404 errors on every compression attempt.
+To suppress: either ensure Ollama starts on login (=start-ollama.ps1=) or set
+=compression.enabled: false= in =hermes.yml= until Ollama is back.
+
 * Related
 
-- t3 Providers  (FIXME: [[file:~/.config/t3/t3.org]] not found)
-- Codex Config  (FIXME: [[file:~/.config/codex/codex.org]] not found)
 - [[file:~/.config/himalaya/himalaya.org][Himalaya Email CLI]]
 - BM notes: =hermes-agent-native-windows-install=, =hermes-config-migrated-to-dotconfig=

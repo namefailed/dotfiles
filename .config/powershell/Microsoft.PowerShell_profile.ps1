@@ -97,22 +97,24 @@ if ($missing) {
     [Environment]::SetEnvironmentVariable('Path', ((@($have | Where-Object { $_ }) + $missing) -join ';'), 'User')
 }
 
-Set-PSReadLineOption -Colors @{
-    Command          = '#89b4fa'
-    Parameter        = '#fab387'
-    Operator         = '#f38ba8'
-    Variable         = '#b4befe'
-    Comment          = '#585b70'
-    String           = '#a6e3a1'
-    Number           = '#f9e2af'
-    Type             = '#b4befe'
-}
+if ($isInteractiveConsole) {
+    Set-PSReadLineOption -Colors @{
+        Command          = '#89b4fa'
+        Parameter        = '#fab387'
+        Operator         = '#f38ba8'
+        Variable         = '#b4befe'
+        Comment          = '#585b70'
+        String           = '#a6e3a1'
+        Number           = '#f9e2af'
+        Type             = '#b4befe'
+    }
 
-# InlinePrediction is only supported in newer PSReadLine versions
-try { Set-PSReadLineOption -Colors @{ InlinePrediction = '#6c7086' } -ErrorAction Stop } catch {}
+    # InlinePrediction is only supported in newer PSReadLine versions
+    try { Set-PSReadLineOption -Colors @{ InlinePrediction = '#6c7086' } -ErrorAction Stop } catch {}
 
-if (Get-Variable PSStyle -ErrorAction SilentlyContinue) {
-    $PSStyle.Formatting.Error = "`e[38;2;243;139;168m"
+    if (Get-Variable PSStyle -ErrorAction SilentlyContinue) {
+        $PSStyle.Formatting.Error = "`e[38;2;243;139;168m"
+    }
 }
 
 if ($isInteractiveConsole) {
@@ -207,6 +209,10 @@ if ($__cmds['bat']) {
     Set-Alias cat bat
 }
 
+if ($__cmds['lazygit'])  { Set-Alias lg      lazygit  }
+if ($__cmds['btm'])      { Set-Alias top     btm      }
+if ($__cmds['topgrade']) { Set-Alias upgrade topgrade }
+
 function Ensure-PoshGit {
     if ($script:PoshGitLoaded) { return $true }
     if (-not $isInteractiveConsole -or -not (Test-Module posh-git)) { return $false }
@@ -241,10 +247,8 @@ function Ensure-PSFzf {
 
 if ($isInteractiveConsole -and $psReadLineLoaded -and $__cmds['fzf']) {
     Set-PSReadLineKeyHandler -Key Ctrl+Shift+r -ScriptBlock {
-        # Use faster stream-based reading for large history files
         $historyPath = (Get-PSReadLineOption).HistorySavePath
-        $h = [System.IO.File]::ReadLines($historyPath)
-        $s = $h | fzf --tac
+        $s = Get-Content -Path $historyPath -Tail 1000 | fzf --tac
         if ($s) { [Microsoft.PowerShell.PSConsoleReadLine]::Insert($s) }
     }
 

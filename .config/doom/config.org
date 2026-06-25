@@ -181,7 +181,6 @@ path in one step rather than drilling down interactively.
 ** Capture Templates
 
 Journal-first: everything lands in =journal.org= (=j= for log, =J= for task).
-Promote later with =SPC n p=.
 
 #+begin_src emacs-lisp
 (setq org-capture-templates
@@ -680,57 +679,6 @@ Called from phoneme-denote.ps1 via emacsclient --eval."
                     "::" head)
             (replace-regexp-in-string "^\\*+ +" "" head))))
 
-(defun my/org-append-promoted-task (file heading-re title link-line)
-  "Insert a new TODO heading under HEADING-RE in FILE with TITLE and LINK-LINE."
-  (let ((path (expand-file-name file org-directory)))
-    (with-current-buffer (find-file-noselect path)
-      (org-with-wide-buffer
-        (goto-char (point-min))
-        (unless (re-search-forward heading-re nil t)
-          (user-error "Could not find heading matching %s in %s" heading-re path))
-        (let ((sub-end (save-excursion
-                         (goto-char (match-beginning 0))
-                         (org-end-of-subtree t t)
-                         (point))))
-          (goto-char sub-end)
-          (insert (format "\n** TODO %s\n%s\n" title link-line)))))))
-
-(defun my/org-journal-promote-line-or-region ()
-  "Promote journal line/region to a real `** TODO' heading in tasks.org.
-The sorting step in the journal-first workflow — capture in journal, then
-promote here with a backlink to today's entry."
-  (interactive)
-  (unless (and buffer-file-name
-               (file-equal-p (expand-file-name buffer-file-name)
-                             (expand-file-name my/org-journal-file)))
-    (user-error "Promote only works in journal.org"))
-  (let* ((bounds (if (use-region-p)
-                     (cons (region-beginning) (region-end))
-                   (cons (line-beginning-position) (line-end-position))))
-         (raw (buffer-substring-no-properties (car bounds) (cdr bounds)))
-         (title (my/org-journal--strip-plan-line-text
-                 (if (use-region-p)
-                     (replace-regexp-in-string "[\n\r]+" " " raw)
-                   raw)))
-         (dest "tasks.org")
-         (link (concat "From journal: " (my/org-journal--day-heading-link)))
-         (re "^\\* Inbox$"))
-    (when (string-blank-p title)
-      (user-error "Nothing to promote"))
-    (my/org-append-promoted-task dest re title link)
-    (save-excursion
-      (my/org-journal-ensure-log-target)
-      (end-of-line)
-      (newline)
-      (insert (format-time-string "- [%Y-%m-%d %a %H:%M] Promoted: ")
-              title " → " dest))
-    (message "Promoted %s to %s" title dest)))
-
-(defun my/org-quick-task-capture ()
-  "Open tasks.org (Win+T)."
-  (interactive)
-  (find-file (expand-file-name "tasks.org" org-directory)))
-
 (defun my/org-journal-insert-timestamp ()
   "Append a timestamped bullet entry to today's Log section."
   (interactive)
@@ -767,11 +715,6 @@ new tasks always land after existing ones."
                 (if (string-blank-p contents)
                     (progn
                       (setq my/eod-pending t)
-                      (select-frame-set-input-focus (selected-frame))
-                      (when (executable-find "powershell")
-                        (call-process "powershell" nil nil nil
-                          "-Command"
-                          "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.MessageBox]::Show('EOD is empty — wrap up your day!', '⚠ Journal Reminder', 'OK', 'Warning')"))
                       (ding t))
                   (setq my/eod-pending nil)))
             (setq my/eod-pending nil))
@@ -1567,7 +1510,8 @@ Additional toggles placed in =SPC T= (which now holds the map moved from
 #+begin_src emacs-lisp
 (map! :leader
       :desc "Toggle word wrap"        "T w" #'+word-wrap-mode
-      :desc "Toggle undecorated frame" "T u" #'my/toggle-undecorated-frame)
+      :desc "Toggle undecorated frame" "T u" #'my/toggle-undecorated-frame
+      :desc "Toggle minimap"          "T m" #'minimap-mode)
 #+end_src
 
 ** File Picker
@@ -1680,6 +1624,19 @@ actions remain available on =C-.= inside any minibuffer.
 
 * UI
 
+** Minimap
+
+Zoomed-out code overview in a left-side window, toggled via =SPC T m=.
+
+#+begin_src emacs-lisp
+(use-package! minimap
+  :commands minimap-mode
+  :config
+  (setq minimap-window-location 'left
+        minimap-width-fraction 0.08
+        minimap-minimum-width 12))
+#+end_src
+
 ** Treemacs
 
 =+treemacs-git-mode= is set to =deferred= so git status decorations load
@@ -1745,12 +1702,8 @@ breathing room. =SPC T u= is the shortcut (bound in [[*Toggles][Toggles]] below)
         (set-frame-parameter nil 'undecorated new)
         (modify-all-frames-parameters `((undecorated . ,new)))
         (if new
-            (progn
-              (set-frame-parameter nil 'undecorated-round t)
-              (set-frame-parameter nil 'internal-border-width 14))
-          (progn
-            (set-frame-parameter nil 'undecorated-round nil)
-            (set-frame-parameter nil 'internal-border-width 0)))
+            (set-frame-parameter nil 'internal-border-width 14)
+          (set-frame-parameter nil 'internal-border-width 0))
         (message "Undecorated + Rounded Corners: %s" (if new "ON" "OFF")))
     (message "Undecorated frame toggle requires a GUI frame.")))
 #+end_src

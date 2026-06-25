@@ -27,9 +27,9 @@
     }
   ],
   "ShowUiOnStart": false,
-  "HorizontalScreenCoverage": 100,
+  "HorizontalScreenCoverage": 101,
   "HorizontalAlign": "Center",
   "VerticalScreenCoverage": 48,
-  "VerticalOffset": 25,
+  "VerticalOffset": 27,
   "AnimationDurationMs": 0
 }

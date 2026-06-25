@@ -591,8 +591,9 @@ edge rendering). Toggling the bar with =LAlt+b= (via =toggle-komorebi-bar.ps1=) 
 or starts both =komorebi-bar.exe= instances and restarts Komorebi and WTQ so each tool
 recalculates the work area with the new bar height.
 
-=transparency_alpha= at 235/255 (~92%) gives a slightly frosted look that
-matches the WTQ terminal opacity (90%).
+=transparency_alpha= at 120/255 (~47% opaque) approximates the TranslucentTaskbar
+aero look — the taskbar uses blur+tint to reach that darkness; without blur, a
+higher alpha is needed to match the perceived tone.
 
 ** Left Widgets
 
@@ -628,7 +629,7 @@ monitoring during normal work. Re-enable by setting =enable: true= if needed.
   "height": 32,
   "padding": 8,
   "widget_spacing": 10,
-  "transparency_alpha": 235,
+  "transparency_alpha": 120,
   "theme": {
     "palette": "Catppuccin",
     "name": "Mocha",
@@ -669,7 +670,7 @@ monitoring during normal work. Re-enable by setting =enable: true= if needed.
     },
     {
       "Storage": {
-        "enable": false,
+        "enable": true,
         "show_used": true,
         "show_total": false
       }

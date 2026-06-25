@@ -1047,6 +1047,94 @@ if ($emacsProc) { [WinFocus]::AllowSetForegroundWindow($emacsProc.Id) | Out-Null
 
 #+end_src
 
+** emacs-scratch-frame.ps1
+
+*Purpose:* Create, focus, or minimize the tiled Howm scratch Emacs frame.
+
+*Trigger:* =LWin+Shift+S= (Kanata =lmet-launcher=).
+
+#+begin_src powershell :tangle kanata/emacs-scratch-frame.ps1
+# Create, focus, or minimize the tiled Howm scratch Emacs frame.
+# Bound in the Kanata lmet-launcher layer to LWin + Shift + S.
+
+$ErrorActionPreference = 'SilentlyContinue'
+. (Join-Path $env:USERPROFILE '.config\scripts\_lib\config-paths.ps1')
+. (Join-Path $PSScriptRoot 'emacs-window-focus.ps1')
+
+$emacsClient  = Get-EmacsExecutable -Name emacsclient
+$emacsClientW = Get-EmacsExecutable -Name emacsclientw
+if (-not $emacsClientW) {
+    Write-Error 'emacsclientw.exe not found (checked Program Files Emacs installs and PATH)'
+    exit 1
+}
+
+Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+public static class WinFocus {
+    [DllImport("user32.dll")] public static extern bool   AllowSetForegroundWindow(int dwProcessId);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern uint   GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+}
+'@
+
+$status = & $emacsClient --eval '(my/howm-frame-status)' 2>$null
+
+if ($status -notmatch '"(?:selected|exists)"') {
+    # ArgumentList must be a SINGLE STRING — see emacs-home-frame.ps1 for rationale.
+    Start-Process -FilePath $emacsClientW `
+        -ArgumentList '--alternate-editor= -c -n -F "((name . \"Howm Scratch Tiled\") (title . \"Howm Scratch Tiled\"))" --eval "(run-with-timer 0 nil (lambda () (my/howm-frame-setup)))"' `
+        -WorkingDirectory $env:USERPROFILE
+    exit
+}
+
+$emacsProc = Get-Process -Name emacs | Select-Object -First 1
+$fg        = [WinFocus]::GetForegroundWindow()
+[uint32]$fgPid = 0
+[WinFocus]::GetWindowThreadProcessId($fg, [ref]$fgPid) | Out-Null
+$emacsIsFg = $emacsProc -and ($fgPid -eq [uint32]$emacsProc.Id)
+
+if ($emacsIsFg -and $status -match '"selected"') {
+    & $emacsClient --eval '(my/howm-minimize)' 2>$null
+} else {
+    if ($emacsProc) { [WinFocus]::AllowSetForegroundWindow($emacsProc.Id) | Out-Null }
+    & $emacsClient --eval '(my/howm-raise)' 2>$null
+    Set-EmacsFrameForeground -TitleEquals 'Howm Scratch Tiled'
+}
+#+end_src
+
+** wtq-howm-launcher.ps1
+
+*Purpose:* Launch the dedicated Howm scratch frame for WTQ.
+
+*Trigger:* =LWin+s= in WTQ (not Kanata). Creates the frame if it doesn't exist; exits silently if it does.
+
+#+begin_src powershell :tangle kanata/wtq-howm-launcher.ps1
+# Launch the dedicated Howm scratch frame for WTQ.
+# Bound to LWin + s in WTQ (not Kanata).
+
+$ErrorActionPreference = 'SilentlyContinue'
+. (Join-Path $env:USERPROFILE '.config\scripts\_lib\config-paths.ps1')
+
+$emacsClientW = Get-EmacsExecutable -Name emacsclientw
+if (-not $emacsClientW) {
+    Write-Error 'emacsclientw.exe not found (checked Program Files Emacs installs and PATH)'
+    exit 1
+}
+
+$existingWindow = Get-Process | Where-Object {
+    $_.MainWindowTitle -eq 'Howm Scratch'
+} | Select-Object -First 1
+
+if ($existingWindow) {
+    exit 0
+}
+
+Start-Process -FilePath $emacsClientW `
+    -ArgumentList '--alternate-editor= -c -n -F "((name . \"Howm Scratch\") (title . \"Howm Scratch\"))" --eval "(run-with-timer 0 nil (lambda () (my/wtq-howm-frame-setup)))"' `
+    -WorkingDirectory $env:USERPROFILE
+#+end_src
+
 ** cycle-send-monitor.ps1
 
 *Purpose:* Send focused window to the other monitor and follow it. Used by Kanata =LAlt+Space= for up/down toggle between monitors.
@@ -2617,6 +2705,54 @@ if ($exitCode -eq 0) {
 exit $exitCode
 #+end_src
 
+** auto-git-sync.ps1
+
+*Purpose:* Commit and push all three repos if there are pending changes. Skips any repo with no changes.
+
+*Schedule:* Windows Task Scheduler task =AutoGitSync= (=\AutoGitSync=), every 2 hours, runs =pwsh.exe= directly — no Claude dependency.
+
+| Repo | Method | Commit prefix |
+|------+--------+---------------|
+| =~/.config= dotfiles | =yadm add -u= | =auto: dotfiles= |
+| =~/Documents/org= notes | =git add -A= | =auto: notes= |
+| =~/basic-memory= | =git add -A= | =auto: basic-memory= |
+
+#+begin_src powershell :tangle utility/auto-git-sync.ps1
+# auto-git-sync.ps1 — commit and push all three repos if there are changes.
+# Runs on a schedule (see Task Scheduler: AutoGitSync).
+
+$stamp = Get-Date -Format "yyyy-MM-dd HH:mm"
+
+function Sync-Repo {
+    param([string]$Path, [string]$Label, [bool]$UseYadm = $false)
+
+    Push-Location $Path
+    try {
+        if ($UseYadm) {
+            $changes = yadm status --porcelain 2>$null
+            if ($changes) {
+                yadm add -u
+                yadm commit -m "auto: $Label $stamp"
+                yadm push
+            }
+        } else {
+            $changes = git status --porcelain 2>$null
+            if ($changes) {
+                git add -A
+                git commit -m "auto: $Label $stamp"
+                git push
+            }
+        }
+    } finally {
+        Pop-Location
+    }
+}
+
+Sync-Repo -Path "$env:USERPROFILE\.config"      -Label "dotfiles"     -UseYadm $true
+Sync-Repo -Path "$env:USERPROFILE\Documents\org" -Label "notes"
+Sync-Repo -Path "$env:USERPROFILE\basic-memory"  -Label "basic-memory"
+#+end_src
+
 * Archived utility scripts
 :PROPERTIES:
 :CUSTOM_ID: archived-utility-scripts
@@ -3298,6 +3434,58 @@ $daemonPs1 = "$profile\.config\scripts\hermes\hermes-gateway-healthcheck-daemon.
 if (Test-Path $daemonPs1) {
     Start-Process "powershell.exe" -ArgumentList "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$daemonPs1`"" -WindowStyle Hidden
 }
+#+end_src
+
+* AI Scripts
+
+** start-ollama.ps1
+
+*Purpose:* Start the Ollama server silently in the background.
+
+*Trigger:* Called from startup or manually. No window shown.
+
+#+begin_src powershell :tangle ai/start-ollama.ps1 :mkdirp yes
+# Starts the Ollama server silently in the background
+# Deployed from scripts.org
+Start-Process -FilePath "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe" -ArgumentList "serve" -WindowStyle Hidden
+#+end_src
+
+* NixOS VM
+
+** nixos-vm-launch.ps1
+
+*Purpose:* Launch a NixOS QEMU VM via WSL Ubuntu. 8 vCPU / 8 GB RAM / UEFI / VNC at =localhost:5900=.
+
+*Trigger:* Manual — run from PowerShell when needed.
+
+#+begin_src powershell :tangle nixos-vm-launch.ps1 :mkdirp yes
+$WslDistro = "Ubuntu"
+$VmDir = "/home/namef/nixos-vm"
+
+Write-Host "=== NixOS VM Launcher ===" -ForegroundColor Cyan
+Write-Host "Starting QEMU VM (8 vCPU, 8GB RAM, UEFI)..." -ForegroundColor Yellow
+Write-Host "VNC available at localhost:5900 -> connect via TightVNC Viewer" -ForegroundColor Green
+
+wsl -d $WslDistro bash -c @"
+cd $VmDir
+cp /usr/share/OVMF/OVMF_VARS_4M.fd nixos-vars.fd 2>/dev/null
+qemu-system-x86_64 \
+  -machine q35,accel=kvm:hax:tcg \
+  -cpu host \
+  -smp 8 \
+  -m 8G \
+  -drive file=nixos-disk.qcow2,if=virtio,format=qcow2 \
+  -cdrom nixos-graphical-26.05-x86_64.iso \
+  -netdev user,id=net0,hostfwd=tcp::10022-:22 \
+  -device virtio-net-pci,netdev=net0 \
+  -vga virtio \
+  -display none \
+  -vnc :0 \
+  -bios /usr/share/OVMF/OVMF_CODE_4M.fd \
+  -drive if=pflash,format=raw,file=nixos-vars.fd,readonly=off
+"@
+
+Write-Host "VM stopped." -ForegroundColor Cyan
 #+end_src
 
 * Documentation map
