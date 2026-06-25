@@ -112,7 +112,6 @@ function Get-ConfigOrgDriftMap {
         'git\git.org'                           = @('git\config')
         'espanso\espanso.org'                   = @('espanso\config\default.yml', 'espanso\match\base.yml')
         'vscode\vscode.org'                     = @('vscode\settings.json', 'vscode\keybindings.json')
-        'windsurf\windsurf.org'                 = @('windsurf\settings.json', 'windsurf\keybindings.json')
         'wezterm\wezterm.org'                   = @('wezterm\wezterm.lua')
         'tridactyl\tridactyl.org'               = @('tridactyl\.tridactylrc', 'tridactyl\native\tridactyl.json')
         'everything\everything.org'             = @('everything\Everything.ini')
