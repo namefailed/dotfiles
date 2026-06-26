@@ -3462,26 +3462,26 @@ $WslDistro = "Ubuntu"
 $VmDir = "/home/namef/nixos-vm"
 
 Write-Host "=== NixOS VM Launcher ===" -ForegroundColor Cyan
-Write-Host "Starting QEMU VM (8 vCPU, 8GB RAM, UEFI)..." -ForegroundColor Yellow
+Write-Host "Starting QEMU VM (4 vCPU, 8GB RAM, UEFI)..." -ForegroundColor Yellow
 Write-Host "VNC available at localhost:5900 -> connect via TightVNC Viewer" -ForegroundColor Green
 
 wsl -d $WslDistro bash -c @"
 cd $VmDir
 cp /usr/share/OVMF/OVMF_VARS_4M.fd nixos-vars.fd 2>/dev/null
 qemu-system-x86_64 \
-  -machine q35,accel=kvm:hax:tcg \
-  -cpu host \
-  -smp 8 \
+  -machine q35 \
+  -cpu max \
+  -smp 4 \
   -m 8G \
   -drive file=nixos-disk.qcow2,if=virtio,format=qcow2 \
   -cdrom nixos-graphical-26.05-x86_64.iso \
   -netdev user,id=net0,hostfwd=tcp::10022-:22 \
   -device virtio-net-pci,netdev=net0 \
-  -vga virtio \
+  -vga std \
   -display none \
-  -vnc :0 \
-  -bios /usr/share/OVMF/OVMF_CODE_4M.fd \
-  -drive if=pflash,format=raw,file=nixos-vars.fd,readonly=off
+  -vnc 127.0.0.1:0 \
+  -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
+  -drive if=pflash,format=raw,file=nixos-vars.fd
 "@
 
 Write-Host "VM stopped." -ForegroundColor Cyan
