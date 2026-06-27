@@ -3410,8 +3410,8 @@ Start-Sleep -Seconds 3
 
 # Start standalone bar instances for dual monitors
 $barConfigs = @(
-    "$profile\.config\komorebi\komorebi.bar.json",
-    "$profile\.config\komorebi\komorebi.bar.top.json"
+    "$env:USERPROFILE\.config\komorebi\komorebi.bar.json",
+    "$env:USERPROFILE\.config\komorebi\komorebi.bar.top.json"
 )
 $barExe = (Get-Command 'komorebi-bar.exe' -ErrorAction SilentlyContinue).Source
 if (-not $barExe) { $barExe = "C:\Program Files\komorebi\bin\komorebi-bar.exe" }
