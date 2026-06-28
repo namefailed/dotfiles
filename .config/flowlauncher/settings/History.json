@@ -2727,6 +2727,38 @@
       "RecordKey": null,
       "ShowBadge": false,
       "QuerySuggestionText": null
+    },
+    {
+      "Query": "\u003E cmd",
+      "ExecutedDateTime": "2026-06-28T04:29:40.2288223-05:00",
+      "Title": "cmd",
+      "SubTitle": "execute command through command shell",
+      "ActionKeywordAssigned": null,
+      "CopyText": "execute command through command shell",
+      "AutoCompleteText": null,
+      "IcoPath": "Images/shell.png",
+      "IcoPathAbsolute": "C:\\Users\\Namef\\AppData\\Local\\FlowLauncher\\app-1.20.2\\Plugins\\Flow.Launcher.Plugin.Shell\\Images/shell.png",
+      "BadgeIcoPath": null,
+      "RoundedIcon": false,
+      "Glyph": null,
+      "Score": 0,
+      "TitleHighlightData": null,
+      "PluginDirectory": "C:\\Users\\Namef\\AppData\\Local\\FlowLauncher\\app-1.20.2\\Plugins\\Flow.Launcher.Plugin.Shell",
+      "PluginID": "D409510CD0D2481F853690A07E6DC426",
+      "TitleToolTip": null,
+      "SubTitleToolTip": null,
+      "ProgressBar": null,
+      "ProgressBarColor": "#26a0da",
+      "Preview": {
+        "PreviewImagePath": null,
+        "IsMedia": false,
+        "Description": null,
+        "FilePath": null
+      },
+      "AddSelectedCount": true,
+      "RecordKey": null,
+      "ShowBadge": false,
+      "QuerySuggestionText": null
     }
   ]
 }
