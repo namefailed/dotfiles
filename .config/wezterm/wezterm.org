@@ -128,9 +128,10 @@ for i = 1, 9 do
 end
 table.insert(config.keys, { key = '0', mods = 'CTRL', action = act.ActivateTab(9) })
 
--- Clipboard: Ctrl+C copy, Ctrl+Shift+C SIGINT (cancel)
+-- Clipboard: Ctrl+C copy, Ctrl+Shift+C SIGINT (cancel), Ctrl+V paste
 table.insert(config.keys, { key = 'c', mods = 'CTRL', action = act.CopyTo 'Clipboard' })
 table.insert(config.keys, { key = 'c', mods = 'CTRL|SHIFT', action = act.SendKey { key = 'C', mods = 'CTRL' } })
+table.insert(config.keys, { key = 'v', mods = 'CTRL', action = act.PasteFrom 'Clipboard' })
 table.insert(config.keys, { key = 'v', mods = 'CTRL|SHIFT', action = act.PasteFrom 'Clipboard' })
 #+end_src
 

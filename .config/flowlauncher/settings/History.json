@@ -2500,6 +2500,73 @@
       "RecordKey": null,
       "ShowBadge": false,
       "QuerySuggestionText": null
+    },
+    {
+      "Query": "\u003E komorebic stop \u0026\u0026 komorebic start --ffm --bar",
+      "ExecutedDateTime": "2026-06-26T20:48:28.1506961-05:00",
+      "Title": "komorebic stop \u0026\u0026 komorebic start --ffm --bar",
+      "SubTitle": "execute command through command shell",
+      "ActionKeywordAssigned": null,
+      "CopyText": "execute command through command shell",
+      "AutoCompleteText": null,
+      "IcoPath": "Images/shell.png",
+      "IcoPathAbsolute": "C:\\Users\\Namef\\AppData\\Local\\FlowLauncher\\app-1.20.2\\Plugins\\Flow.Launcher.Plugin.Shell\\Images/shell.png",
+      "BadgeIcoPath": null,
+      "RoundedIcon": false,
+      "Glyph": null,
+      "Score": 0,
+      "TitleHighlightData": null,
+      "PluginDirectory": "C:\\Users\\Namef\\AppData\\Local\\FlowLauncher\\app-1.20.2\\Plugins\\Flow.Launcher.Plugin.Shell",
+      "PluginID": "D409510CD0D2481F853690A07E6DC426",
+      "TitleToolTip": null,
+      "SubTitleToolTip": null,
+      "ProgressBar": null,
+      "ProgressBarColor": "#26a0da",
+      "Preview": {
+        "PreviewImagePath": null,
+        "IsMedia": false,
+        "Description": null,
+        "FilePath": null
+      },
+      "AddSelectedCount": true,
+      "RecordKey": null,
+      "ShowBadge": false,
+      "QuerySuggestionText": null
+    },
+    {
+      "Query": "shut",
+      "ExecutedDateTime": "2026-06-27T17:03:45.9820253-05:00",
+      "Title": "Shutdown",
+      "SubTitle": "Shutdown Computer",
+      "ActionKeywordAssigned": null,
+      "CopyText": "Shutdown Computer",
+      "AutoCompleteText": null,
+      "IcoPath": "Images\\shutdown.png",
+      "IcoPathAbsolute": "C:\\Users\\Namef\\AppData\\Local\\FlowLauncher\\app-1.20.2\\Plugins\\Flow.Launcher.Plugin.Sys\\Images\\shutdown.png",
+      "BadgeIcoPath": null,
+      "RoundedIcon": false,
+      "Glyph": {
+        "FontFamily": "/Resources/#Segoe Fluent Icons",
+        "Glyph": "\uE7E8"
+      },
+      "Score": 0,
+      "TitleHighlightData": null,
+      "PluginDirectory": "C:\\Users\\Namef\\AppData\\Local\\FlowLauncher\\app-1.20.2\\Plugins\\Flow.Launcher.Plugin.Sys",
+      "PluginID": "CEA08895D2544B019B2E9C5009600DF4",
+      "TitleToolTip": null,
+      "SubTitleToolTip": null,
+      "ProgressBar": null,
+      "ProgressBarColor": "#26a0da",
+      "Preview": {
+        "PreviewImagePath": null,
+        "IsMedia": false,
+        "Description": null,
+        "FilePath": null
+      },
+      "AddSelectedCount": true,
+      "RecordKey": null,
+      "ShowBadge": false,
+      "QuerySuggestionText": null
     }
   ]
 }

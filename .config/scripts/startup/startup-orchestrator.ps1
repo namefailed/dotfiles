@@ -80,16 +80,12 @@ Start-Sleep -Seconds 5
 $komorebicExe = (Get-Command 'komorebic-no-console.exe' -ErrorAction SilentlyContinue).Source
 if (-not $komorebicExe) { $komorebicExe = "C:\Program Files\komorebi\bin\komorebic-no-console.exe" }
 if (Test-Path $komorebicExe) {
-    Start-Process $komorebicExe -ArgumentList "start --ffm --config `"$env:USERPROFILE\.config\komorebi\komorebi.json`"" -WindowStyle Hidden
+    Start-Process $komorebicExe -ArgumentList "start --ffm --config `"$profile\.config\komorebi\komorebi.json`"" -WindowStyle Hidden
 }
 
 # Wait for komorebi daemon to fully start before launching bars
 Wait-ForProcess -Name "komorebi" -TimeoutSecs 10 | Out-Null
 Start-Sleep -Seconds 3
-
-# Ensure named workspaces exist (v0.1.41+ doesn't load names from config)
-& "C:\Program Files\komorebi\bin\komorebic-no-console.exe" ensure-named-workspaces 0 browse write code ops cowork social focus 2>&1 | Out-Null
-Start-Sleep -Seconds 1
 
 # Start standalone bar instances for dual monitors
 $barConfigs = @(

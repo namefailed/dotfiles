@@ -12,6 +12,7 @@
     "emacs .": 1,
     "wtq": 1,
     "komorebic stop": 3,
-    "fkill emacs": 1
+    "fkill emacs": 1,
+    "komorebic stop \u0026\u0026 komorebic start --ffm --bar": 1
   }
 }
