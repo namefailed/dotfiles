@@ -50,6 +50,7 @@ as the default git pager. Already installed via winget.
 #+begin_src conf :tangle config
 [core]
     pager = delta
+    autocrlf = input
 
 [delta]
     navigate     = true

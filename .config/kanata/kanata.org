@@ -40,7 +40,7 @@ opening the generated file that edits belong in the =.org= source.
 
 Kanata is a highly advanced, kernel-level keyboard remapper. In this system architecture, Kanata sits at the absolute bottom of the input stack—intercepting keystrokes *before* the Windows OS, Komorebi, or any applications see them.
 
-** Why Kanata?**
+** Why Kanata?
 By intercepting keys at the driver level, we can implement complex logic like Tap-Hold modifiers (e.g., tapping 'F' outputs 'f', holding 'F' acts as 'Shift') and dedicated layers without relying on clunky OS-level utilities like AutoHotkey. This guarantees zero latency and zero key-eating by Windows Menus.
 
 ** Philosophy
@@ -409,6 +409,10 @@ Single-action bindings with no modifier variant. All fire via =komorebic-wrapper
 =toggle-komorebi-bar.ps1= directly since toggling the bar also restarts Komorebi and WTQ
 to recalculate work area geometry.
 
+Note: =kwm-b= uses legacy =powershell.exe= (5.1) instead of =pwsh.exe=. Before
+switching, verify that the UAC elevation in =toggle-komorebi-bar.ps1= works
+correctly under PowerShell 7.
+
 #+begin_src conf
 (defalias
   kwm-semi  (cmd wscript.exe //B "<<config-scripts-fwd>>/komorebi/komorebic-wrapper.vbs" unstack)
@@ -673,12 +677,6 @@ call =emacsclient --eval= for frame state, then =my/*-raise= / minimize in Doom,
              -LaunchPath explorer.exe
              -Arguments "shell:AppsFolder\Microsoft.YourPhone_8wekyb3d8bbwe!App")
 
-  kwl-spc (switch
-    ()
-      spc break
-  )
-
-  kwl-s s
 )
 #+end_src
 
@@ -897,7 +895,7 @@ correctly.
   _          ;; esc
   _          ;; caps
   _          ;; a
-  @kwl-s     ;; s   → pass-through (howm removed)
+  s          ;; s
   _          ;; d
   @kwl-f     ;; f   → Firefox
   _          ;; ;
@@ -943,7 +941,7 @@ correctly.
   _          ;; up
   _          ;; right
   _          ;; z
-  @kwl-spc   ;; spc → pass-through
+  spc        ;; spc
   _          ;; lmet
   @kwl-o     ;; o   → Outlook
   _          ;; n
@@ -1196,10 +1194,20 @@ was already made by the time the layer activates.
 :header-args:conf: :tangle external.kbd :noweb yes
 :END:
 
+#+begin_quote
+⚠ *SYNC WARNING*: The alias blocks and layer definitions below are manual
+copies of the Main profile. Any alias change in the Main profile must be
+mirrored here. There is no tooling to detect drift.
+#+end_quote
+
 Small external keyboard (no CapsLock key). Mirrors the main profile with these swaps:
 - Position 0 (physical esc): sends =grv= (backtick/tilde) instead of =caps=
 - Position 21 (physical grv): sends =@cap= (Esc on tap / Vim on hold) instead of =@grv-mouse=
 - All other layers: position 0 sends =grv= instead of =_= (passthrough)
+
+Note: position 21 binding to =@cap= means *the mouse layer is unreachable* on the
+external keyboard — =@grv-mouse= is never activated. This is intentional: the
+external keyboard relies on =@cap= for Esc/Vim access from the grv physical position.
 
 #+begin_src conf
 ;; =============================================================
@@ -1648,12 +1656,6 @@ Small external keyboard (no CapsLock key). Mirrors the main profile with these s
              -LaunchPath explorer.exe
              -Arguments "shell:AppsFolder\Microsoft.YourPhone_8wekyb3d8bbwe!App")
 
-  kwl-spc (switch
-    ()
-      spc break
-  )
-
-  kwl-s s
 )
 #+end_src
 
@@ -1830,7 +1832,7 @@ Small external keyboard (no CapsLock key). Mirrors the main profile with these s
   grv         ;; esc
   _           ;; caps
   _           ;; a
-  @kwl-s      ;; s   → pass-through (howm removed)
+  s           ;; s
   _           ;; d
   @kwl-f      ;; f   → Firefox
   _           ;; ;
@@ -1876,7 +1878,7 @@ Small external keyboard (no CapsLock key). Mirrors the main profile with these s
   _           ;; up
   _           ;; right
   _           ;; z
-  @kwl-spc    ;; spc → pass-through
+  spc         ;; spc
   _           ;; lmet
   @kwl-o      ;; o   → Outlook
   _           ;; n
@@ -2086,6 +2088,11 @@ Stock keyboard behaviour with no remapping. Activated by =Ctrl+Shift+NumLock=
 from the main profile via =toggle-kanata-profile.ps1=. Only =caps=, =lctl=,
 =lsft=, and =nlck= are intercepted — just enough to keep the toggle combo working
 so you can switch back.
+
+Note: the =profile-toggle= alias here uses =wscript.exe //B run-powershell-silent.vbs=
+rather than =pwsh.exe -WindowStyle Hidden= directly. This is because the plain
+profile is the "safe" fallback and deliberately avoids depending on the pwsh
+executable being available or on PATH in all edge cases.
 
 #+begin_src conf
 ;; =============================================================

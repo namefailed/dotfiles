@@ -31,6 +31,8 @@ hermes/audio_cache/
 hermes/.hermes_history
 hermes/sandboxes/
 himalaya/config.toml
+himalaya/himalaya-debug.log
+github-copilot/versions.json
 opencode/node_modules/
 ollama/cache/
 ollama/models/

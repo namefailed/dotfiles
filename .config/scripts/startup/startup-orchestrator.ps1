@@ -110,5 +110,5 @@ if (Test-Path $hermesExe) {
 # Gateway health watchdog — persistent daemon (loop, not scheduled task)
 $daemonPs1 = "$profile\.config\scripts\hermes\hermes-gateway-healthcheck-daemon.ps1"
 if (Test-Path $daemonPs1) {
-    Start-Process "powershell.exe" -ArgumentList "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$daemonPs1`"" -WindowStyle Hidden
+    Start-Process "pwsh.exe" -ArgumentList "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$daemonPs1`"" -WindowStyle Hidden
 }

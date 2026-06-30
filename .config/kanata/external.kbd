@@ -398,7 +398,7 @@
   kwl-o (cmd pwsh.exe -WindowStyle Hidden -NonInteractive -NoProfile -File
              "C:/Users/Namef/.config/scripts/kanata/focus-or-launch.ps1"
              -ProcessName olk
-              -LaunchPath "(replace-regexp-in-string "\\\\" "/" (expand-file-name "~/AppData/Local/Microsoft/WindowsApps/olk.exe"))")
+              -LaunchPath "C:/Users/Namef/AppData/Local/Microsoft/WindowsApps/olk.exe")
 
   kwl-p (cmd pwsh.exe -WindowStyle Hidden -NonInteractive -NoProfile -File
              "C:/Users/Namef/.config/scripts/kanata/focus-or-launch.ps1"
@@ -406,12 +406,6 @@
              -LaunchPath explorer.exe
              -Arguments "shell:AppsFolder\Microsoft.YourPhone_8wekyb3d8bbwe!App")
 
-  kwl-spc (switch
-    ()
-      spc break
-  )
-
-  kwl-s s
 )
 
 (deflayer default
@@ -578,7 +572,7 @@
   grv         ;; esc
   _           ;; caps
   _           ;; a
-  @kwl-s      ;; s   → pass-through (howm removed)
+  s           ;; s
   _           ;; d
   @kwl-f      ;; f   → Firefox
   _           ;; ;
@@ -624,7 +618,7 @@
   _           ;; up
   _           ;; right
   _           ;; z
-  @kwl-spc    ;; spc → pass-through
+  spc         ;; spc
   _           ;; lmet
   @kwl-o      ;; o   → Outlook
   _           ;; n

@@ -84,7 +84,7 @@ function Repair-KanataTangledFiles {
         if ($kbdText -match 'expand-file-name "~/AppData/Local/Microsoft/WindowsApps/olk') {
             $kbdText = [regex]::Replace(
                 $kbdText,
-                '\(replace-regexp-in-string "\\\\" "/" \(expand-file-name "~/AppData/Local/Microsoft/WindowsApps/olk\.exe"\)\)',
+                '\(replace-regexp-in-string "\\\\\\\\" "/" \(expand-file-name "~/AppData/Local/Microsoft/WindowsApps/olk\.exe"\)\)',
                 $olkFwd)
         }
         Set-Content -LiteralPath $kbdPath -Value $kbdText -NoNewline

@@ -353,6 +353,15 @@ but can be moved to the bottom monitor with =LAlt+Space=.
 
 Switch any workspace at runtime with =komorebic change-layout <layout>=.
 
+Workspace notes:
+- =code= rule matches the title ="main - code"= — this is an Emacs frame title set
+  in =doom/config.org=. The workspace is named =code= (not =emacs=) to leave room
+  for other editors. The frame title is the reliable discriminator; exe-based rules
+  for Emacs are unreliable on Windows.
+- =focus= is a single-column scrolling layout for Phoneme (voice dictation). The
+  narrow column keeps the transcript panel and controls side-by-side without
+  competing for horizontal space.
+
 #+begin_src json :tangle komorebi.json
   "monitors": [
     {
@@ -438,17 +447,7 @@ Switch any workspace at runtime with =komorebic change-layout <layout>=.
             },
             {
               "kind": "Exe",
-              "id": "Cursor.exe",
-              "matching_strategy": "Equals"
-            },
-            {
-              "kind": "Exe",
               "id": "codex.exe",
-              "matching_strategy": "Equals"
-            },
-            {
-              "kind": "Exe",
-              "id": "antigravity.exe",
               "matching_strategy": "Equals"
             },
             {
@@ -573,14 +572,13 @@ a stable visual reference for workspace position.
 
 ** Right Widgets
 
-System metrics on the right. =Storage= is disabled — disk usage rarely needs
-monitoring during normal work. Re-enable by setting =enable: true= if needed.
+System metrics on the right.
 
 | Widget    | Shows                                   |
 |-----------+-----------------------------------------|
 | =Update=  | Pending system updates indicator        |
 | =Media=   | Now-playing artist and track title      |
-| =Storage= | Disk usage (disabled)                   |
+| =Storage= | Disk usage (used / total)               |
 | =Cpu=     | CPU usage percentage                    |
 | =Memory=  | RAM usage percentage                    |
 
@@ -588,6 +586,82 @@ monitoring during normal work. Re-enable by setting =enable: true= if needed.
 
 #+begin_src json :tangle komorebi.bar.json
 {
+  "font_family": "CaskaydiaCove NFM",
+  "font_size": 12,
+  "height": 32,
+  "padding": 8,
+  "widget_spacing": 10,
+  "transparency_alpha": 120,
+  "theme": {
+    "palette": "Catppuccin",
+    "name": "Mocha",
+    "accent": "Pink"
+  },
+  "left_widgets": [
+    {
+      "Komorebi": {
+        "workspaces": {
+          "enable": true,
+          "hide_empty_workspaces": false,
+          "active_workspace_icon": "",
+          "workspace_icon": ""
+        }
+      }
+    },
+    {
+      "Komorebi": {
+        "focused_window": {
+          "enable": true,
+          "show_icon": true
+        }
+      }
+    }
+  ],
+  "right_widgets": [
+    {
+      "Update": {
+        "enable": true
+      }
+    },
+    {
+      "Media": {
+        "enable": true,
+        "show_artist": true,
+        "show_title": true
+      }
+    },
+    {
+      "Storage": {
+        "enable": true,
+        "show_used": true,
+        "show_total": false
+      }
+    },
+    {
+      "Cpu": {
+        "enable": true,
+        "show_percentage": true
+      }
+    },
+    {
+      "Memory": {
+        "enable": true,
+        "show_percentage": true
+      }
+    }
+  ]
+}
+#+end_src
+
+** Top Bar Config
+
+The top bar (monitor 1) uses the same widget set as the bottom bar, with =monitor: 1=
+added so komorebi-bar attaches to the correct screen. Previously this file was
+hand-maintained outside the literate system; it now tangles from here.
+
+#+begin_src json :tangle komorebi.bar.top.json
+{
+  "monitor": 1,
   "font_family": "CaskaydiaCove NFM",
   "font_size": 12,
   "height": 32,

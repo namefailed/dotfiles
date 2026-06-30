@@ -6,6 +6,6 @@ if (-not $cred) {
 }
 Add-Type -AssemblyName System.Runtime.WindowsRuntime
 $vault = [Windows.Security.Credentials.PasswordVault, Windows.Security.Credentials, ContentType=WindowsRuntime]
-$credential = (New-Object Windows.Security.Credentials.PasswordVault).Retrieve("gmail", "***@***.***")
+$credential = (New-Object Windows.Security.Credentials.PasswordVault).Retrieve("gmail", "***@***.***")  # literal vault key (not redacted)
 $credential.RetrievePassword()
 Write-Output $credential.Password

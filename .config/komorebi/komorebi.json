@@ -46,26 +46,9 @@
   },
   {
     "kind": "Exe",
-    "id": "mscopilot.exe",
-    "matching_strategy": "Equals"
-  },
-  {
-    "kind": "Exe",
     "id": "(?i)^mscopilot\\.exe$",
     "matching_strategy": "Regex"
   },
-  [
-    {
-      "kind": "Exe",
-      "id": "mscopilot.exe",
-      "matching_strategy": "Equals"
-    },
-    {
-      "kind": "Class",
-      "id": "Chrome_WidgetWin_1",
-      "matching_strategy": "Equals"
-    }
-  ],
   [
     {
       "kind": "Exe",
@@ -169,14 +152,6 @@
   {
     "kind": "Exe",
     "id": "qutebrowser.exe",
-    "matching_strategy": "Equals"
-  }
-],
-
-"layered_applications": [
-  {
-    "kind": "Exe",
-    "id": "Cursor.exe",
     "matching_strategy": "Equals"
   }
 ],
@@ -290,17 +265,7 @@
             },
             {
               "kind": "Exe",
-              "id": "Cursor.exe",
-              "matching_strategy": "Equals"
-            },
-            {
-              "kind": "Exe",
               "id": "codex.exe",
-              "matching_strategy": "Equals"
-            },
-            {
-              "kind": "Exe",
-              "id": "antigravity.exe",
               "matching_strategy": "Equals"
             },
             {
