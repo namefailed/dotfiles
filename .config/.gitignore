@@ -52,3 +52,17 @@ espanso/match/personal.yml
 tailscale/
 vscode/extensions/
 windsurf/
+
+# qutebrowser runtime (rewritten by app on every settings change)
+qutebrowser/autoconfig.yml
+qutebrowser/bookmarks/
+qutebrowser/quickmarks
+qutebrowser/__pycache__/
+
+# Kanata binaries (large; reinstall alongside kanata binary release)
+kanata/*.exe
+kanata/*.dll
+
+# Stale tangle outputs that should never be committed
+ollama/none
+vscode-mcp.json

@@ -60,6 +60,16 @@ as the default git pager. Already installed via winget.
     diffFilter = delta --color-only
 #+end_src
 
+* Global .gitignore
+
+Git reads =~/.config/git/ignore= (XDG) as the global excludes file. No
+=core.excludesFile= is needed — Git 2.x picks this up automatically.
+
+#+begin_src conf :tangle ignore
+# Claude Code local settings (machine-specific, never commit)
+**/.claude/settings.local.json
+#+end_src
+
 * Overview & Architecture
 
 Git is the global version control system.

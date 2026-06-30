@@ -96,11 +96,12 @@ Windows in this list are excluded from tiling and float freely above the managed
 - =QuakeTerm= — WezTerm quake terminal (managed separately). Ignored by window
   class so regular =wezterm-gui.exe= instances still tile normally on the ops
   workspace.
+- =wtq.exe= — Windows Terminal Quake process. Ignored so WTQ manages its own
+  window positioning; without this Komorebi would tile it.
 - =MSCTFIME UI= / =Default IME= — Windows text input service windows. These are
   invisible system-level popups; tiling them breaks input.
-- Microsoft Copilot host (=mscopilot.exe=, often Chromium / =Chrome_WidgetWin_1=),
-  plus =Regex= =(?i)mscopilot\\.exe= so casing from the OS cannot bypass the rule.
-- =ApplicationFrameHost.exe= whose title contains =Copilot= — alternate shell for the
+- Microsoft Copilot (=mscopilot.exe=): one =Regex= rule with =(?i)= covers all OS
+  casing variants. A compound =ApplicationFrameHost.exe= rule catches the
   pinned/desktop Copilot window when it does not report as =mscopilot.exe=.
 - =Qt\\d+QWindow.*Tool.*= + =qutebrowser.exe= — qutebrowser Qt auxiliary tooltip/tool window (hovering tabs, links, UI). Compound rule in =ignore_rules= excludes it
   from management entirely (unlike floating, which still battles the layout).
@@ -140,26 +141,9 @@ Windows in this list are excluded from tiling and float freely above the managed
     },
     {
       "kind": "Exe",
-      "id": "mscopilot.exe",
-      "matching_strategy": "Equals"
-    },
-    {
-      "kind": "Exe",
       "id": "(?i)^mscopilot\\.exe$",
       "matching_strategy": "Regex"
     },
-    [
-      {
-        "kind": "Exe",
-        "id": "mscopilot.exe",
-        "matching_strategy": "Equals"
-      },
-      {
-        "kind": "Class",
-        "id": "Chrome_WidgetWin_1",
-        "matching_strategy": "Equals"
-      }
-    ],
     [
       {
         "kind": "Exe",
@@ -313,25 +297,6 @@ non-client area (title bar + borders) and draws its own border instead.
   ],
 #+end_src
 
-** Layered Applications
-
-Apps that use layered/transparent windows and need special compositing handling.
-Without this, borders and transparency effects can glitch on these windows.
-Currently only =Cursor.exe= is listed. Copilot uses =ignore_rules= and
-=floating_applications= (see above), not layered compositing.
-
-#+begin_src json :tangle komorebi.json
-
-
-  "layered_applications": [
-    {
-      "kind": "Exe",
-      "id": "Cursor.exe",
-      "matching_strategy": "Equals"
-    }
-  ],
-#+end_src
-
 * Theme
 
 Catppuccin Mocha palette wired into Komorebi's border and stackbar colours.
@@ -375,15 +340,14 @@ minor visual artifacts may appear during rapid tiling changes.
 
 * Monitors
 
-Bottom monitor (1920×1200): seven named workspaces (four Grid + three scrolling): browse, write, emacs, ops, cowork (scrolling, 2 col), social (scrolling, 2 col), focus (scrolling, 1 col).
-Top monitor (2560×1440): seven BSP workspaces (browse, write, emacs, ops, cowork, social, focus). The top monitor follows
+Bottom monitor (1920×1200): seven named workspaces (four Grid + three scrolling): browse, write, code, ops, cowork (scrolling, 2 col), social (scrolling, 2 col), focus (scrolling, 1 col).
+Top monitor (2560×1440): seven BSP workspaces (browse, write, code, ops, cowork, social, focus). The top monitor follows
 the bottom: =LAlt+N= switches workspaces on the *current* monitor only;
 =Shift+LAlt+N= switches both monitors simultaneously via =focus-workspaces N=.
 
 *Initial workspace rules* on the bottom monitor route a fixed set of apps at launch
-(Firefox, qutebrowser, Obsidian, main - emacs, FIXME: no rule found for VS Code,
-Claude, Cursor, Codex, Antigravity, Open Code, terminals, social stack, phoneme). Copilot is
-*not* auto-routed—open it on whatever workspace you are on.
+(Firefox, qutebrowser, Obsidian, Emacs/code, Claude, Codex, Open Code, terminals,
+social stack, phoneme). Copilot is *not* auto-routed—open it on whatever workspace you are on.
 No =initial_workspace_rules= on the top monitor — apps launched there stay there
 but can be moved to the bottom monitor with =LAlt+Space=.
 

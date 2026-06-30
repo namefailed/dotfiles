@@ -74,9 +74,6 @@ matches:
   # BASICS
   # ------------------------------------------------------------------
 
-  - trigger: ":espanso"
-    replace: "Hi there!"
-
   # -- Standard Timestamps ----------------------------------------
 
   - trigger: ":date"
@@ -316,7 +313,7 @@ foreach ($lang in $langs) {
 [void]$lines.Add("  - trigger: `":example`"")
 [void]$lines.Add("    replace: `"#+begin_example\n\n#+end_example`"")
 [void]$lines.Add("    label: Insert Org example block")
-$content = $lines -join "`r`n"
+$content = $lines -join "`n"
 Set-Content -Path $file -Value $content -Encoding UTF8
 Write-Output "Generated $file"
 #+end_src
