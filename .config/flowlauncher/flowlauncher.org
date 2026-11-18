@@ -28,11 +28,26 @@ opening the generated file that edits belong in the =.org= source.
     "Generated from ~/.config/flowlauncher/flowlauncher.org",
     "Edit that file, tangle with `tangle flowlauncher`,",
     "then restart Flow Launcher for changes to take effect.",
-    "============================================================="
-  ],
+   "============================================================="
+   ],
+#+end_src
+
+* Fork Compatibility Settings
+
+Keys consumed by the custom Vim/multiline editor fork builds. Stock Flow
+Launcher ignores these, but keeping them in the literate source prevents
+re-tangling from dropping Matt's editor workflow.
+
+#+begin_src json
+    "EnableVimMode": true,
+    "EnableVimMultiLineEditor": true,
+    "VimEditorVisibleLines": 9,
+    "VimEditorAutoPair": true,
+    "VimEditorAutoIndent": true,
 #+end_src
 
 * Overview
+
 
 Flow Launcher is the keyboard-first launcher surface for the Windows desktop.
 This file defines the core window behavior, custom explorers and browsers, and
