@@ -15,6 +15,17 @@ $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot '..\_lib\config-paths.ps1')
 
+function Get-FileSha256 {
+    param([Parameter(Mandatory)][string]$LiteralPath)
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $stream = [System.IO.File]::OpenRead($LiteralPath)
+        try { return [BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '') }
+        finally { $stream.Dispose() }
+    }
+    finally { $sha.Dispose() }
+}
+
 $emacsExe = Get-EmacsExecutable -Name emacs
 if (-not $emacsExe) { Write-Error 'Emacs not found.'; exit 1 }
 
@@ -24,6 +35,12 @@ if ($ReadOnly) {
 
 $orgOutputs = Get-ConfigOrgDriftMap
 $driftAll = @()
+$appDrift = @()
+$appManaged = @(
+    'vscode\settings.json'
+    'windows-terminal\settings.json'
+    'flowlauncher\settings\Settings.json'
+)
 
 foreach ($orgRel in $orgOutputs.Keys) {
     $orgPath = Join-Path $ConfigDir $orgRel
@@ -41,7 +58,7 @@ foreach ($orgRel in $orgOutputs.Keys) {
     foreach ($out in $orgOutputs[$orgRel]) {
         $full = Join-Path $ConfigDir $out
         if (Test-Path -LiteralPath $full) {
-            $before[$out] = (Get-FileHash -LiteralPath $full -Algorithm SHA256).Hash
+            $before[$out] = (Get-FileSha256 -LiteralPath $full)
             if ($ReadOnly) {
                 $bak = Join-Path $backupRoot $out
                 $bakDir = Split-Path -Parent $bak
@@ -70,13 +87,24 @@ foreach ($orgRel in $orgOutputs.Keys) {
         foreach ($out in $orgOutputs[$orgRel]) {
             $full = Join-Path $ConfigDir $out
             if (-not (Test-Path -LiteralPath $full)) { continue }
-            $after = (Get-FileHash -LiteralPath $full -Algorithm SHA256).Hash
+            $after = (Get-FileSha256 -LiteralPath $full)
             if ($null -ne $before[$out] -and $before[$out] -ne $after) { $drifted += $out }
         }
 
         if ($drifted.Count) {
-            Write-Host ' DRIFT' -ForegroundColor Yellow
-            foreach ($d in $drifted) { $driftAll += "$orgRel -> $d" }
+            $expected = @($drifted | Where-Object { $appManaged -contains $_ })
+            $real = @($drifted | Where-Object { $appManaged -notcontains $_ })
+            if ($expected.Count) {
+                Write-Host ' APP-DRIFT' -ForegroundColor DarkYellow
+                foreach ($d in $expected) { $appDrift += "$orgRel -> $d" }
+            }
+            if ($real.Count) {
+                Write-Host ' DRIFT' -ForegroundColor Yellow
+                foreach ($d in $real) { $driftAll += "$orgRel -> $d" }
+            }
+            if (-not $expected.Count -and -not $real.Count) {
+                Write-Host ' OK' -ForegroundColor Green
+            }
         } else {
             Write-Host ' OK' -ForegroundColor Green
         }
@@ -96,6 +124,12 @@ foreach ($orgRel in $orgOutputs.Keys) {
     }
 }
 
+if ($appDrift.Count) {
+    Write-Host ''
+    Write-Host 'App-managed drift (expected; ignored by exit code):' -ForegroundColor DarkYellow
+    $appDrift | ForEach-Object { Write-Host "  $_" }
+}
+
 Write-Host ''
 if ($driftAll.Count) {
     if ($ReadOnly) {
@@ -110,5 +144,9 @@ if ($driftAll.Count) {
     exit 1
 }
 
-Write-Host 'All checked configs match their .org sources.' -ForegroundColor Green
+if ($appDrift.Count) {
+    Write-Host 'All other checked configs match their .org sources.' -ForegroundColor Green
+} else {
+    Write-Host 'All checked configs match their .org sources.' -ForegroundColor Green
+}
 exit 0

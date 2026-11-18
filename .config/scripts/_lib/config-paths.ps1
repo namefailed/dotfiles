@@ -15,11 +15,17 @@ function Get-EmacsExecutable {
     )
 
     $candidates = @(
-        "C:\Program Files\Emacs\emacs-30.2\bin\$Name.exe",
-        "C:\Program Files\Emacs\emacs-30.1\bin\$Name.exe",
         (Join-Path 'C:\tools\emacs\bin' "$Name.exe"),
         (Join-Path (Join-Path $env:ProgramData 'chocolatey\bin') "$Name.exe")
     )
+
+    foreach ($root in @('C:\Program Files\Emacs', (Join-Path $env:LOCALAPPDATA 'Programs\Emacs'))) {
+        if (Test-Path -LiteralPath $root) {
+            $candidates += Get-ChildItem -LiteralPath $root -Directory -ErrorAction SilentlyContinue |
+                Sort-Object Name -Descending |
+                ForEach-Object { Join-Path $_.FullName "bin\$Name.exe" }
+        }
+    }
 
     foreach ($path in $candidates) {
         if (Test-Path -LiteralPath $path) { return $path }
@@ -74,7 +80,7 @@ function Repair-KanataTangledFiles {
     $olkFwd = (Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\olk.exe') -replace '\\', '/'
     $brokenScripts = '(replace-regexp-in-string "\\\\" "/" (expand-file-name "~/.config/scripts"))'
 
-    foreach ($kbdName in @('kanata.kbd', 'kanata-plain.kbd', 'external.kbd')) {
+    foreach ($kbdName in @('kanata.kbd', 'kanata-plain.kbd', 'external.kbd', 'wow.kbd')) {
         $kbdPath = Join-Path $KanataDir $kbdName
         if (-not (Test-Path -LiteralPath $kbdPath)) { continue }
 
@@ -104,7 +110,7 @@ function Test-OrgUsesNoweb {
 function Get-ConfigOrgDriftMap {
     [ordered]@{
         'komorebi\komorebi.org'                 = @('komorebi\komorebi.json', 'komorebi\komorebi.bar.json')
-        'kanata\kanata.org'                     = @('kanata\kanata.kbd', 'kanata\kanata-plain.kbd')
+        'kanata\kanata.org'                     = @('kanata\kanata.kbd', 'kanata\external.kbd', 'kanata\kanata-plain.kbd', 'kanata\wow.kbd')
         'doom\init.org'                         = @('doom\init.el', 'doom\packages.el')
         'doom\config.org'                       = @('doom\config.el')
         'wtq\wtq.org'                           = @('wtq\wtq.jsonc')

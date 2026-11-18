@@ -7,7 +7,7 @@ $24HoursAgo = (Get-Date).AddHours(-24)
 
 $mdFiles = Get-ChildItem -Path $rootDir -Filter *.md -Recurse | Where-Object { $_.FullName -notmatch "\\.git\\" }
 
-$staleNotes = $mdFiles | Where-Object { $_.DirectoryName -match "notes" -and $_.LastWriteTime -lt $7DaysAgo }
+$staleNotes = $mdFiles | Where-Object { $_.DirectoryName -match '\\notes\\' -and $_.DirectoryName -notmatch '\\archive\\' -and $_.LastWriteTime -lt $7DaysAgo }
 $recentNotes = $mdFiles | Where-Object { $_.LastWriteTime -gt $24HoursAgo -and $_.Name -ne "daily-digest.md" }
 
 $content = @"

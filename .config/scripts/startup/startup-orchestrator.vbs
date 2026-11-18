@@ -37,6 +37,28 @@ Function FindWinGetExe(packageIdPart, exeFileName)
   Next
 End Function
 
+Function FindEmacsRunemacs()
+  Dim fso, sh, roots, root, folder, candidate, best, bestPath
+  Set fso = CreateObject("Scripting.FileSystemObject")
+  Set sh = CreateObject("WScript.Shell")
+  roots = Array("C:\Program Files\Emacs", sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Programs\Emacs")
+  best = ""
+  For Each root In roots
+    If fso.FolderExists(root) Then
+      For Each folder In fso.GetFolder(root).SubFolders
+        candidate = folder.Path & "\bin\runemacs.exe"
+        If fso.FileExists(candidate) Then
+          If folder.Name > best Then
+            best = folder.Name
+            bestPath = candidate
+          End If
+        End If
+      Next
+    End If
+  Next
+  FindEmacsRunemacs = bestPath
+End Function
+
 Set oShell = CreateObject("WScript.Shell")
 Dim profile, configRoot, kanataDir, emacsRun, espansoExe, kanataExe, wtqExe
 
@@ -44,10 +66,7 @@ profile = oShell.ExpandEnvironmentStrings("%USERPROFILE%")
 configRoot = profile & "\.config"
 kanataDir = configRoot & "\kanata"
 
-emacsRun = FindFirstExistingFile(Array( _
-  "C:\Program Files\Emacs\emacs-30.2\bin\runemacs.exe", _
-  "C:\Program Files\Emacs\emacs-30.1\bin\runemacs.exe" _
-))
+emacsRun = FindEmacsRunemacs()
 espansoExe = oShell.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Programs\Espanso\espansod.exe"
 kanataExe = kanataDir & "\kanata_windows_gui_wintercept_cmd_allowed_x64.exe"
 wtqExe = FindWinGetExe("flyingpie.windows-terminal-quake", "wtq.exe")
@@ -83,14 +102,15 @@ If espansoExe <> "" And CreateObject("Scripting.FileSystemObject").FileExists(es
 End If
 
 ' Kanata (keyboard remapper) — needs working dir for .kbd config and DLLs
-' Pass all 3 configs so the tray icon shows switchable profiles.
-Dim kanataCfg1, kanataCfg2, kanataCfg3
+' Pass all 4 configs so the tray icon shows switchable profiles.
+Dim kanataCfg1, kanataCfg2, kanataCfg3, kanataCfg4
 kanataCfg1 = kanataDir & "\kanata.kbd"
 kanataCfg2 = kanataDir & "\external.kbd"
 kanataCfg3 = kanataDir & "\kanata-plain.kbd"
+kanataCfg4 = kanataDir & "\wow.kbd"
 If kanataExe <> "" And CreateObject("Scripting.FileSystemObject").FileExists(kanataExe) Then
   oShell.CurrentDirectory = kanataDir
-  oShell.Run """" & kanataExe & """ -c """ & kanataCfg1 & """ -c """ & kanataCfg2 & """ -c """ & kanataCfg3 & """", 0, False
+  oShell.Run """" & kanataExe & """ -c """ & kanataCfg1 & """ -c """ & kanataCfg2 & """ -c """ & kanataCfg3 & """ -c """ & kanataCfg4 & """", 0, False
 End If
 
 WScript.Sleep 5000

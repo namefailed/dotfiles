@@ -1,4 +1,4 @@
-﻿#+title:      Scripts Collection
+#+title:      Scripts Collection
 #+date:       [2026-05-13 Tue]
 #+filetags:   :scripts:automation:powershell:
 # #+PROPERTY:   header-args:powershell :tangle yes :mkdirp yes
@@ -41,11 +41,17 @@ function Get-EmacsExecutable {
     )
 
     $candidates = @(
-        "C:\Program Files\Emacs\emacs-30.2\bin\$Name.exe",
-        "C:\Program Files\Emacs\emacs-30.1\bin\$Name.exe",
         (Join-Path 'C:\tools\emacs\bin' "$Name.exe"),
         (Join-Path (Join-Path $env:ProgramData 'chocolatey\bin') "$Name.exe")
     )
+
+    foreach ($root in @('C:\Program Files\Emacs', (Join-Path $env:LOCALAPPDATA 'Programs\Emacs'))) {
+        if (Test-Path -LiteralPath $root) {
+            $candidates += Get-ChildItem -LiteralPath $root -Directory -ErrorAction SilentlyContinue |
+                Sort-Object Name -Descending |
+                ForEach-Object { Join-Path $_.FullName "bin\$Name.exe" }
+        }
+    }
 
     foreach ($path in $candidates) {
         if (Test-Path -LiteralPath $path) { return $path }
@@ -100,7 +106,7 @@ function Repair-KanataTangledFiles {
     $olkFwd = (Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\olk.exe') -replace '\\', '/'
     $brokenScripts = '(replace-regexp-in-string "\\\\" "/" (expand-file-name "~/.config/scripts"))'
 
-    foreach ($kbdName in @('kanata.kbd', 'kanata-plain.kbd', 'external.kbd')) {
+    foreach ($kbdName in @('kanata.kbd', 'kanata-plain.kbd', 'external.kbd', 'wow.kbd')) {
         $kbdPath = Join-Path $KanataDir $kbdName
         if (-not (Test-Path -LiteralPath $kbdPath)) { continue }
 
@@ -130,7 +136,7 @@ function Test-OrgUsesNoweb {
 function Get-ConfigOrgDriftMap {
     [ordered]@{
         'komorebi\komorebi.org'                 = @('komorebi\komorebi.json', 'komorebi\komorebi.bar.json')
-        'kanata\kanata.org'                     = @('kanata\kanata.kbd', 'kanata\kanata-plain.kbd')
+        'kanata\kanata.org'                     = @('kanata\kanata.kbd', 'kanata\external.kbd', 'kanata\kanata-plain.kbd', 'kanata\wow.kbd')
         'doom\init.org'                         = @('doom\init.el', 'doom\packages.el')
         'doom\config.org'                       = @('doom\config.el')
         'wtq\wtq.org'                           = @('wtq\wtq.jsonc')
@@ -221,8 +227,8 @@ shell alias. Generated =.ps1= / =.vbs= headers mirror that summary.
 | =startup/startup-orchestrator.vbs= | Timed launch of all login apps (3 groups) | ProgramData Startup | — (sole startup entry) |
 | =startup/start-menu-killer.ps1= | Kill Start Menu and Search UI watchdog loop | Startup orchestrator | — |
 | =kanata/focus-or-launch.ps1= | Focus / launch / minimize app toggle | Kanata LWin layer via =run-powershell-silent.vbs= | — (hotkey only) |
-| =kanata/toggle-kanata-profile.ps1= | Swap =kanata.kbd= ↔ =kanata-plain.kbd= (tray shows all 3) | =Ctrl+Shift+NumLock= | — |
-| =kanata/toggle-external-kbd.ps1= | Swap =kanata.kbd= ↔ =external.kbd= (tray shows all 3) | =Ctrl+Alt+Shift+Win+Enter= | — |
+| =kanata/toggle-kanata-profile.ps1= | Swap =kanata.kbd= ↔ =kanata-plain.kbd= (tray shows all 4) | =Ctrl+Shift+NumLock= | — |
+| =kanata/toggle-external-kbd.ps1= | Swap =kanata.kbd= ↔ =external.kbd= (tray shows all 4) | =Ctrl+Alt+Shift+Win+Enter= | — |
 | =kanata/emacs-window-focus.ps1= | Win32 =SetForegroundWindow= for Emacs frames by title | Dot-sourced by emacs-home/notes | — |
 | =kanata/emacs-home-frame.ps1= | Emacs Home frame create / focus / minimize | =LWin+Enter= | — |
 | =kanata/emacs-notes.ps1= | Journal workspace frame | =LWin+J= | — |
@@ -362,6 +368,28 @@ Function FindWinGetExe(packageIdPart, exeFileName)
   Next
 End Function
 
+Function FindEmacsRunemacs()
+  Dim fso, sh, roots, root, folder, candidate, best, bestPath
+  Set fso = CreateObject("Scripting.FileSystemObject")
+  Set sh = CreateObject("WScript.Shell")
+  roots = Array("C:\Program Files\Emacs", sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Programs\Emacs")
+  best = ""
+  For Each root In roots
+    If fso.FolderExists(root) Then
+      For Each folder In fso.GetFolder(root).SubFolders
+        candidate = folder.Path & "\bin\runemacs.exe"
+        If fso.FileExists(candidate) Then
+          If folder.Name > best Then
+            best = folder.Name
+            bestPath = candidate
+          End If
+        End If
+      Next
+    End If
+  Next
+  FindEmacsRunemacs = bestPath
+End Function
+
 Set oShell = CreateObject("WScript.Shell")
 Dim profile, configRoot, kanataDir, emacsRun, espansoExe, kanataExe, wtqExe
 
@@ -369,10 +397,7 @@ profile = oShell.ExpandEnvironmentStrings("%USERPROFILE%")
 configRoot = profile & "\.config"
 kanataDir = configRoot & "\kanata"
 
-emacsRun = FindFirstExistingFile(Array( _
-  "C:\Program Files\Emacs\emacs-30.2\bin\runemacs.exe", _
-  "C:\Program Files\Emacs\emacs-30.1\bin\runemacs.exe" _
-))
+emacsRun = FindEmacsRunemacs()
 espansoExe = oShell.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Programs\Espanso\espansod.exe"
 kanataExe = kanataDir & "\kanata_windows_gui_wintercept_cmd_allowed_x64.exe"
 wtqExe = FindWinGetExe("flyingpie.windows-terminal-quake", "wtq.exe")
@@ -408,14 +433,15 @@ If espansoExe <> "" And CreateObject("Scripting.FileSystemObject").FileExists(es
 End If
 
 ' Kanata (keyboard remapper) — needs working dir for .kbd config and DLLs
-' Pass all 3 configs so the tray icon shows switchable profiles.
-Dim kanataCfg1, kanataCfg2, kanataCfg3
+' Pass all 4 configs so the tray icon shows switchable profiles.
+Dim kanataCfg1, kanataCfg2, kanataCfg3, kanataCfg4
 kanataCfg1 = kanataDir & "\kanata.kbd"
 kanataCfg2 = kanataDir & "\external.kbd"
 kanataCfg3 = kanataDir & "\kanata-plain.kbd"
+kanataCfg4 = kanataDir & "\wow.kbd"
 If kanataExe <> "" And CreateObject("Scripting.FileSystemObject").FileExists(kanataExe) Then
   oShell.CurrentDirectory = kanataDir
-  oShell.Run """" & kanataExe & """ -c """ & kanataCfg1 & """ -c """ & kanataCfg2 & """ -c """ & kanataCfg3 & """", 0, False
+  oShell.Run """" & kanataExe & """ -c """ & kanataCfg1 & """ -c """ & kanataCfg2 & """ -c """ & kanataCfg3 & """ -c """ & kanataCfg4 & """", 0, False
 End If
 
 WScript.Sleep 5000
@@ -1278,7 +1304,7 @@ oShell.Run cmd, 0, False
 Set oShell = CreateObject("WScript.Shell")
 
 Dim cmd
-cmd = "komorebic.exe"
+cmd = """C:\Program Files\komorebi\bin\komorebic.exe"""
 
 Dim i
 Dim arg
@@ -1312,12 +1338,15 @@ Cuts out the ~150ms VBS→PS→komorebic×2 chain, replacing it with VBS→komor
 
 Set oShell = CreateObject("WScript.Shell")
 
+Dim kb
+kb = """C:\Program Files\komorebi\bin\komorebic.exe"""
+
 Dim wsIndex
 wsIndex = WScript.Arguments(0)
 
 ' Switch the other monitor first so focus stays on the current one.
-oShell.Run "komorebic.exe focus-monitor-workspace 1 " & wsIndex, 0, True
-oShell.Run "komorebic.exe focus-monitor-workspace 0 " & wsIndex, 0, False
+oShell.Run kb & " focus-monitor-workspace 1 " & wsIndex, 0, True
+oShell.Run kb & " focus-monitor-workspace 0 " & wsIndex, 0, False
 #+end_src
 
 ** enforce-windows-settings.ps1
@@ -1474,7 +1503,7 @@ $24HoursAgo = (Get-Date).AddHours(-24)
 
 $mdFiles = Get-ChildItem -Path $rootDir -Filter *.md -Recurse | Where-Object { $_.FullName -notmatch "\\.git\\" }
 
-$staleNotes = $mdFiles | Where-Object { $_.DirectoryName -match "notes" -and $_.LastWriteTime -lt $7DaysAgo }
+$staleNotes = $mdFiles | Where-Object { $_.DirectoryName -match '\\notes\\' -and $_.DirectoryName -notmatch '\\archive\\' -and $_.LastWriteTime -lt $7DaysAgo }
 $recentNotes = $mdFiles | Where-Object { $_.LastWriteTime -gt $24HoursAgo -and $_.Name -ne "daily-digest.md" }
 
 $content = @"
@@ -2232,7 +2261,9 @@ if ($failCount -gt 0) { exit 1 }
 
 *Parameters:* =-ReadOnly= (default =on=) — compare without leaving re-tangled files on disk; use =-ReadOnly:$false= to fix drift in place.
 
-*Exit codes:* =0= in sync, =1= drift detected.
+*Exit codes:* =0= in sync (app-managed drift reported as =APP-DRIFT= but ignored), =1= real drift detected.
+
+*App-managed outputs:* =vscode/settings.json=, =windows-terminal/settings.json=, =flowlauncher/settings/Settings.json= are rewritten by their apps; drift there is informational only.
 
 Uses shared =Get-ConfigOrgDriftMap= and =Invoke-EmacsOrgTangle= from [[file:_lib/config-paths.ps1][config-paths.ps1]] (noweb preexecute + kanata post-process).
 
@@ -2254,6 +2285,17 @@ $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot '..\_lib\config-paths.ps1')
 
+function Get-FileSha256 {
+    param([Parameter(Mandatory)][string]$LiteralPath)
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $stream = [System.IO.File]::OpenRead($LiteralPath)
+        try { return [BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '') }
+        finally { $stream.Dispose() }
+    }
+    finally { $sha.Dispose() }
+}
+
 $emacsExe = Get-EmacsExecutable -Name emacs
 if (-not $emacsExe) { Write-Error 'Emacs not found.'; exit 1 }
 
@@ -2263,6 +2305,12 @@ if ($ReadOnly) {
 
 $orgOutputs = Get-ConfigOrgDriftMap
 $driftAll = @()
+$appDrift = @()
+$appManaged = @(
+    'vscode\settings.json'
+    'windows-terminal\settings.json'
+    'flowlauncher\settings\Settings.json'
+)
 
 foreach ($orgRel in $orgOutputs.Keys) {
     $orgPath = Join-Path $ConfigDir $orgRel
@@ -2280,7 +2328,7 @@ foreach ($orgRel in $orgOutputs.Keys) {
     foreach ($out in $orgOutputs[$orgRel]) {
         $full = Join-Path $ConfigDir $out
         if (Test-Path -LiteralPath $full) {
-            $before[$out] = (Get-FileHash -LiteralPath $full -Algorithm SHA256).Hash
+            $before[$out] = (Get-FileSha256 -LiteralPath $full)
             if ($ReadOnly) {
                 $bak = Join-Path $backupRoot $out
                 $bakDir = Split-Path -Parent $bak
@@ -2309,13 +2357,24 @@ foreach ($orgRel in $orgOutputs.Keys) {
         foreach ($out in $orgOutputs[$orgRel]) {
             $full = Join-Path $ConfigDir $out
             if (-not (Test-Path -LiteralPath $full)) { continue }
-            $after = (Get-FileHash -LiteralPath $full -Algorithm SHA256).Hash
+            $after = (Get-FileSha256 -LiteralPath $full)
             if ($null -ne $before[$out] -and $before[$out] -ne $after) { $drifted += $out }
         }
 
         if ($drifted.Count) {
-            Write-Host ' DRIFT' -ForegroundColor Yellow
-            foreach ($d in $drifted) { $driftAll += "$orgRel -> $d" }
+            $expected = @($drifted | Where-Object { $appManaged -contains $_ })
+            $real = @($drifted | Where-Object { $appManaged -notcontains $_ })
+            if ($expected.Count) {
+                Write-Host ' APP-DRIFT' -ForegroundColor DarkYellow
+                foreach ($d in $expected) { $appDrift += "$orgRel -> $d" }
+            }
+            if ($real.Count) {
+                Write-Host ' DRIFT' -ForegroundColor Yellow
+                foreach ($d in $real) { $driftAll += "$orgRel -> $d" }
+            }
+            if (-not $expected.Count -and -not $real.Count) {
+                Write-Host ' OK' -ForegroundColor Green
+            }
         } else {
             Write-Host ' OK' -ForegroundColor Green
         }
@@ -2335,6 +2394,12 @@ foreach ($orgRel in $orgOutputs.Keys) {
     }
 }
 
+if ($appDrift.Count) {
+    Write-Host ''
+    Write-Host 'App-managed drift (expected; ignored by exit code):' -ForegroundColor DarkYellow
+    $appDrift | ForEach-Object { Write-Host "  $_" }
+}
+
 Write-Host ''
 if ($driftAll.Count) {
     if ($ReadOnly) {
@@ -2349,7 +2414,11 @@ if ($driftAll.Count) {
     exit 1
 }
 
-Write-Host 'All checked configs match their .org sources.' -ForegroundColor Green
+if ($appDrift.Count) {
+    Write-Host 'All other checked configs match their .org sources.' -ForegroundColor Green
+} else {
+    Write-Host 'All checked configs match their .org sources.' -ForegroundColor Green
+}
 exit 0
 #+end_src
 
@@ -3379,8 +3448,8 @@ Start-Sleep -Seconds 2
 # ===== Group 2: Lightweight user apps =====
 if (Test-Path $espansoExe) { Start-Process $espansoExe -ArgumentList "launcher" -WindowStyle Hidden }
 if (Test-Path $kanataExe) {
-  # Pass all 3 configs so the tray icon shows switchable profiles.
-  $allArgs = @("-c", "$kanataDir\kanata.kbd", "-c", "$kanataDir\external.kbd", "-c", "$kanataDir\kanata-plain.kbd")
+  # Pass all 4 configs so the tray icon shows switchable profiles.
+  $allArgs = @("-c", "$kanataDir\kanata.kbd", "-c", "$kanataDir\external.kbd", "-c", "$kanataDir\kanata-plain.kbd", "-c", "$kanataDir\wow.kbd")
   Start-Process $kanataExe -ArgumentList $allArgs -WorkingDirectory $kanataDir -WindowStyle Hidden
 }
 

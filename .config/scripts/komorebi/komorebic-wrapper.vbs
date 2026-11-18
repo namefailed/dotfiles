@@ -5,7 +5,7 @@
 Set oShell = CreateObject("WScript.Shell")
 
 Dim cmd
-cmd = "komorebic.exe"
+cmd = """C:\Program Files\komorebi\bin\komorebic.exe"""
 
 Dim i
 Dim arg

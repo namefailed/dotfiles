@@ -17,8 +17,8 @@
 (defalias
   profile-toggle (switch
     ((and (input real lctl) (input real lsft)))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/run-powershell-silent.vbs"
-           "C:/Users/Namef/.config/scripts/kanata/toggle-kanata-profile.ps1") break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/run-powershell-silent.vbs"
+           "c:/Users/Namef/.config/scripts/kanata/toggle-kanata-profile.ps1") break
     ()
       nlck break
   )

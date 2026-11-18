@@ -7,8 +7,6 @@
     "then restart VSCode for changes to take effect.",
     "============================================================="
   ],
-
-"chat.mcp.enabled": true,
 "chat.mcp.gallery.enabled": true,
 "workbench.colorTheme": "Catppuccin Mocha",
 "workbench.iconTheme": "catppuccin-mocha",
@@ -190,7 +188,6 @@
 "workbench.editor.tabSizing": "shrink",
 "workbench.editor.scrollToSwitchTabs": true,
 "workbench.editor.closeOnFileDelete": true,
-"workbench.activityBar.visible": true,
 "workbench.statusBar.visible": true,
 "workbench.list.smoothScrolling": true,
 
@@ -216,5 +213,6 @@
     "https://schemastore.azurewebsites.net/": true,
     "https://www.schemastore.org/": true
   },
-  "security.workspace.trust.untrustedFiles": "open"
+  "security.workspace.trust.untrustedFiles": "open",
+  "chat.mcp.access": "all"
 }

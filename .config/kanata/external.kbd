@@ -160,7 +160,7 @@
   profile-toggle (switch
     ((and (input real lctl) (input real lsft)))
       (cmd pwsh.exe -WindowStyle Hidden -NonInteractive -NoProfile -File
-           "C:/Users/Namef/.config/scripts/kanata/toggle-kanata-profile.ps1") break
+           "c:/Users/Namef/.config/scripts/kanata/toggle-kanata-profile.ps1") break
     ()
       nlck break
   )
@@ -170,7 +170,7 @@
   ret-ext-toggle (switch
     ((and (input real lctl) (input real lalt) (input real lsft) (input real lmet)))
       (cmd pwsh.exe -WindowStyle Hidden -NonInteractive -NoProfile -File
-           "C:/Users/Namef/.config/scripts/kanata/toggle-external-kbd.ps1") break
+           "c:/Users/Namef/.config/scripts/kanata/toggle-external-kbd.ps1") break
     ()
       ret break
   )
@@ -178,11 +178,11 @@
   kwm-ret-ext-toggle (switch
     ((and (input real lctl) (input real lalt) (input real lsft) (input real lmet)))
       (cmd pwsh.exe -WindowStyle Hidden -NonInteractive -NoProfile -File
-           "C:/Users/Namef/.config/scripts/kanata/toggle-external-kbd.ps1") break
+           "c:/Users/Namef/.config/scripts/kanata/toggle-external-kbd.ps1") break
     ()
       (switch
         ((input real lsft))
-          (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" promote) break
+          (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" promote) break
         ()
           ret break
       ) break
@@ -191,146 +191,146 @@
   kwl-ret-ext-toggle (switch
     ((and (input real lctl) (input real lalt) (input real lsft) (input real lmet)))
       (cmd pwsh.exe -WindowStyle Hidden -NonInteractive -NoProfile -File
-           "C:/Users/Namef/.config/scripts/kanata/toggle-external-kbd.ps1") break
+           "c:/Users/Namef/.config/scripts/kanata/toggle-external-kbd.ps1") break
     ()
       (cmd pwsh.exe -WindowStyle Hidden -NonInteractive -NoProfile -File
-           "C:/Users/Namef/.config/scripts/kanata/emacs-home-frame.ps1") break
+           "c:/Users/Namef/.config/scripts/kanata/emacs-home-frame.ps1") break
   )
 )
 
 (defalias
-  kwm-semi  (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" unstack)
-  kwm-y     (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" flip-layout vertical)
-  kwm-p     (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" toggle-pause)
-  kwm-x     (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" flip-layout horizontal)
-  kwm-t     (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" toggle-float)
-  kwm-f     (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" toggle-monocle)
-  kwm-q     (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" close)
-  kwm-m     (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" minimize)
-  kwm-i     (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" toggle-shortcuts)
+  kwm-semi  (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" unstack)
+  kwm-y     (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" flip-layout vertical)
+  kwm-p     (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" toggle-pause)
+  kwm-x     (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" flip-layout horizontal)
+  kwm-t     (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" toggle-float)
+  kwm-f     (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" toggle-monocle)
+  kwm-q     (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" close)
+  kwm-m     (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" minimize)
+  kwm-i     (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" toggle-shortcuts)
   kwm-spc   (cmd pwsh.exe -WindowStyle Hidden -NonInteractive -NoProfile -File
-                "C:/Users/Namef/.config/scripts/kanata/cycle-send-monitor.ps1")
-  kwm-left  (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" stack left)
-  kwm-down  (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" stack down)
-  kwm-up    (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" stack up)
-  kwm-right (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" stack right)
+                "c:/Users/Namef/.config/scripts/kanata/cycle-send-monitor.ps1")
+  kwm-left  (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" stack left)
+  kwm-down  (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" stack down)
+  kwm-up    (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" stack up)
+  kwm-right (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" stack right)
   kwm-b     (cmd powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden
-                -File "C:/Users/Namef/.config/scripts/komorebi/toggle-komorebi-bar.ps1")
+                -File "c:/Users/Namef/.config/scripts/komorebi/toggle-komorebi-bar.ps1")
 )
 
 (defalias
   kwm-h (switch
     ((and (input real lctl) (input real lsft)))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-move-to-workspace previous) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-move-to-workspace previous) break
     ((input real lctl))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-workspace previous) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-workspace previous) break
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" move left) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" move left) break
     ()
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus left) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus left) break
   )
   kwm-j (switch
     ((and (input real lctl) (input real lsft)))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-send-to-monitor previous) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-send-to-monitor previous) break
     ((input real lctl))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-monitor previous) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-monitor previous) break
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" move down) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" move down) break
     ()
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus down) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus down) break
   )
   kwm-k (switch
     ((and (input real lctl) (input real lsft)))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-send-to-monitor next) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-send-to-monitor next) break
     ((input real lctl))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-monitor next) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-monitor next) break
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" move up) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" move up) break
     ()
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus up) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus up) break
   )
   kwm-l (switch
     ((and (input real lctl) (input real lsft)))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-move-to-workspace next) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-move-to-workspace next) break
     ((input real lctl))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-workspace next) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-workspace next) break
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" move right) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" move right) break
     ()
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus right) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus right) break
   )
 )
 
 (defalias
   kwm-lbrc (switch
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-focus previous) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-focus previous) break
     ()
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-stack previous) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-stack previous) break
   )
   kwm-rbrc (switch
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-focus next) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-focus next) break
     ()
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-stack next) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-stack next) break
   )
   kwm-cm (switch
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-move-to-workspace previous) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-move-to-workspace previous) break
     ()
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-workspace previous) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-workspace previous) break
   )
   kwm-dt (switch
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-move-to-workspace next) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-move-to-workspace next) break
     ()
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-workspace next) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-workspace next) break
   )
   kwm-eq (switch
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" resize-axis vertical   increase) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" resize-axis vertical   increase) break
     ()
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" resize-axis horizontal increase) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" resize-axis horizontal increase) break
   )
   kwm-mi (switch
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" resize-axis vertical   decrease) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" resize-axis vertical   decrease) break
     ()
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" resize-axis horizontal decrease) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" resize-axis horizontal decrease) break
   )
   kwm-z (switch
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" move-to-last-workspace) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" move-to-last-workspace) break
     ()
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus-last-workspace) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus-last-workspace) break
   )
   kwm-a (switch
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" stack-all) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" stack-all) break
     ()
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" unstack-all) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" unstack-all) break
   )
   kwm-g (switch
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" change-layout bsp) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" change-layout bsp) break
     ()
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-layout next) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" cycle-layout next) break
   )
   kwm-u (switch
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" send-to-last-workspace) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" send-to-last-workspace) break
     ()
       u break
   )
   kwm-r (switch
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" retile) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" retile) break
     ()
       r break
   )
   kwm-ret (switch
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" promote) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" promote) break
     ()
       ret break
   )
@@ -339,69 +339,69 @@
 (defalias
   kwm-1 (switch
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-dual-wrapper.vbs" 0) break
-    () (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus-workspace 0) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-dual-wrapper.vbs" 0) break
+    () (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus-workspace 0) break
   )
   kwm-2 (switch
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-dual-wrapper.vbs" 1) break
-    () (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus-workspace 1) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-dual-wrapper.vbs" 1) break
+    () (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus-workspace 1) break
   )
   kwm-3 (switch
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-dual-wrapper.vbs" 2) break
-    () (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus-workspace 2) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-dual-wrapper.vbs" 2) break
+    () (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus-workspace 2) break
   )
   kwm-4 (switch
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-dual-wrapper.vbs" 3) break
-    () (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus-workspace 3) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-dual-wrapper.vbs" 3) break
+    () (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus-workspace 3) break
   )
   kwm-5 (switch
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-dual-wrapper.vbs" 4) break
-    () (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus-workspace 4) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-dual-wrapper.vbs" 4) break
+    () (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus-workspace 4) break
   )
   kwm-6 (switch
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-dual-wrapper.vbs" 5) break
-    () (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus-workspace 5) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-dual-wrapper.vbs" 5) break
+    () (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus-workspace 5) break
   )
   kwm-7 (switch
     ((input real lsft))
-      (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-dual-wrapper.vbs" 6) break
-    () (cmd wscript.exe //B "C:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus-workspace 6) break
+      (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-dual-wrapper.vbs" 6) break
+    () (cmd wscript.exe //B "c:/Users/Namef/.config/scripts/komorebi/komorebic-wrapper.vbs" focus-workspace 6) break
   )
 )
 
 (defalias
   kwl-ret (cmd pwsh.exe -WindowStyle Hidden -NonInteractive -NoProfile -File
-             "C:/Users/Namef/.config/scripts/kanata/emacs-home-frame.ps1")
+             "c:/Users/Namef/.config/scripts/kanata/emacs-home-frame.ps1")
 
   kwl-j (switch
     ((input real lsft))
       (cmd pwsh.exe -WindowStyle Hidden -NonInteractive -NoProfile -File
-        "C:/Users/Namef/.config/scripts/kanata/emacs-daily-review.ps1") break
+        "c:/Users/Namef/.config/scripts/kanata/emacs-daily-review.ps1") break
     ()
       (cmd pwsh.exe -WindowStyle Hidden -NonInteractive -NoProfile -File
-        "C:/Users/Namef/.config/scripts/kanata/emacs-notes.ps1") break
+        "c:/Users/Namef/.config/scripts/kanata/emacs-notes.ps1") break
   )
 
   kwl-t (cmd pwsh.exe -WindowStyle Hidden -NonInteractive -NoProfile -File
-           "C:/Users/Namef/.config/scripts/kanata/emacs-quick-task.ps1")
+           "c:/Users/Namef/.config/scripts/kanata/emacs-quick-task.ps1")
 
   kwl-f (cmd pwsh.exe -WindowStyle Hidden -NonInteractive -NoProfile -File
-             "C:/Users/Namef/.config/scripts/kanata/focus-or-launch.ps1"
+             "c:/Users/Namef/.config/scripts/kanata/focus-or-launch.ps1"
              -ProcessName firefox
              -LaunchPath "C:/Program Files/Mozilla Firefox/firefox.exe")
 
   kwl-o (cmd pwsh.exe -WindowStyle Hidden -NonInteractive -NoProfile -File
-             "C:/Users/Namef/.config/scripts/kanata/focus-or-launch.ps1"
+             "c:/Users/Namef/.config/scripts/kanata/focus-or-launch.ps1"
              -ProcessName olk
-              -LaunchPath "C:/Users/Namef/AppData/Local/Microsoft/WindowsApps/olk.exe")
+              -LaunchPath "c:/Users/Namef/AppData/Local/Microsoft/WindowsApps/olk.exe")
 
   kwl-p (cmd pwsh.exe -WindowStyle Hidden -NonInteractive -NoProfile -File
-             "C:/Users/Namef/.config/scripts/kanata/focus-or-launch.ps1"
+             "c:/Users/Namef/.config/scripts/kanata/focus-or-launch.ps1"
              -ProcessName PhoneExperienceHost
              -LaunchPath explorer.exe
              -Arguments "shell:AppsFolder\Microsoft.YourPhone_8wekyb3d8bbwe!App")

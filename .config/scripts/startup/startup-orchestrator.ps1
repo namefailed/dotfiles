@@ -58,8 +58,8 @@ Start-Sleep -Seconds 2
 # ===== Group 2: Lightweight user apps =====
 if (Test-Path $espansoExe) { Start-Process $espansoExe -ArgumentList "launcher" -WindowStyle Hidden }
 if (Test-Path $kanataExe) {
-  # Pass all 3 configs so the tray icon shows switchable profiles.
-  $allArgs = @("-c", "$kanataDir\kanata.kbd", "-c", "$kanataDir\external.kbd", "-c", "$kanataDir\kanata-plain.kbd")
+  # Pass all 4 configs so the tray icon shows switchable profiles.
+  $allArgs = @("-c", "$kanataDir\kanata.kbd", "-c", "$kanataDir\external.kbd", "-c", "$kanataDir\kanata-plain.kbd", "-c", "$kanataDir\wow.kbd")
   Start-Process $kanataExe -ArgumentList $allArgs -WorkingDirectory $kanataDir -WindowStyle Hidden
 }
 

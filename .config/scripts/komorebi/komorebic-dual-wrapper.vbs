@@ -4,9 +4,12 @@
 
 Set oShell = CreateObject("WScript.Shell")
 
+Dim kb
+kb = """C:\Program Files\komorebi\bin\komorebic.exe"""
+
 Dim wsIndex
 wsIndex = WScript.Arguments(0)
 
 ' Switch the other monitor first so focus stays on the current one.
-oShell.Run "komorebic.exe focus-monitor-workspace 1 " & wsIndex, 0, True
-oShell.Run "komorebic.exe focus-monitor-workspace 0 " & wsIndex, 0, False
+oShell.Run kb & " focus-monitor-workspace 1 " & wsIndex, 0, True
+oShell.Run kb & " focus-monitor-workspace 0 " & wsIndex, 0, False
